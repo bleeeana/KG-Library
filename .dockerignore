@@ -1,0 +1,10 @@
+.venv/
+env/
+.poetry-cache/
+data/
+*.log
+*.tmp
+.git
+.gitignore
+.vscode/
+.idea/
