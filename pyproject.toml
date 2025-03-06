@@ -1,12 +1,12 @@
 [project]
-name = "kg_library"
+name = "KG-library"
 version = "0.1.0"
 description = ""
 authors = [
     {name = "bleeeana",email = "bobkov.v03@icloud.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = "~=3.11"
 packages = [
     {include = "kg_library"}
 ]
@@ -22,6 +22,7 @@ dependencies = [
     "torch-geometric (==2.6.1)",
     "torch (==2.6.0)",
     "langchain",
+    "langchain-community",
     "wikipedia",
     "dgl (==2.1.0)",
     "sentence-transformers",

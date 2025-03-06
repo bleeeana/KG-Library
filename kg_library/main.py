@@ -1,4 +1,4 @@
-from kg_library.db import Neo4jConnection
+from db import Neo4jConnection
 
 def extract_relations(text):
     return [
