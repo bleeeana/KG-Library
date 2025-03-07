@@ -10,11 +10,14 @@ services:
     volumes:
       - neo4j_data:/data
     healthcheck:
-      test: ["CMD", "wget", "http://localhost:7474"]
+      test: [ "CMD", "wget", "http://localhost:7474" ]
       interval: 10s
       timeout: 10s
       retries: 10
       start_period: 30s
+    ports:
+      - "7474:7474"
+      - "7687:7687"
 
   app:
     build: .

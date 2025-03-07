@@ -1,7 +1,7 @@
 import os
 
 NEO4J_URI = os.getenv("NEO4J_URI", "bolt://neo4j:7687")
-NEO4J_AUTH = os.getenv("NEO4J_AUTH", "neo4j/testpassword")
+NEO4J_AUTH = os.getenv("NEO4J_AUTH", "neo4j/testpassword").split('/')
 EMBEDDING_DIM = 300
 HIDDEN_DIM = 128
 __version__ = "0.1.0"
