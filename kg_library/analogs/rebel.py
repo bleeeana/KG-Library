@@ -1,24 +1,20 @@
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=512,
-    length_function=len,
-    is_separator_regex=False, )
-
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from langchain_community.document_loaders import WikipediaLoader
 
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1024,
+    length_function=len,
+    is_separator_regex=False, )
 query = "Dune (Frank Herbert)"
 raw_documents = WikipediaLoader(query=query).load_and_split(text_splitter=text_splitter)
-
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 tokenizer = AutoTokenizer.from_pretrained('Babelscape/rebel-large')
 model = AutoModelForSeq2SeqLM.from_pretrained('Babelscape/rebel-large')
 
-
 def extract_relations_from_model_output(text):
     relations = []
-    relation, subject, relation, object_ = '', '', '', ''
+    subject, relation, object_ = '', '', ''
     text = text.strip()
     current = 'x'
     text_replaced = text.replace("<s>", "").replace("<pad>", "").replace("</s>", "")
@@ -61,15 +57,16 @@ def extract_relations_from_model_output(text):
     return relations
 
 
+def are_relations_equal(r1, r2):
+    return all(r1[attr] == r2[attr] for attr in ["head", "type", "tail"])
+
+
 class KB():
     def __init__(self):
         self.relations = []
 
-    def are_relations_equal(self, r1, r2):
-        return all(r1[attr] == r2[attr] for attr in ["head", "type", "tail"])
-
     def exists_relation(self, r1):
-        return any(self.are_relations_equal(r1, r2) for r2 in self.relations)
+        return any(are_relations_equal(r1, r2) for r2 in self.relations)
 
     def add_relation(self, r):
         if not self.exists_relation(r):
@@ -83,11 +80,11 @@ class KB():
 
 def from_small_text_to_kb(text, verbose=False):
     kb = KB()
-    model_inputs = tokenizer(text, max_length=512, padding=True, truncation=True, return_tensors='pt')
+    model_inputs = tokenizer(text, max_length=1024, padding=True, truncation=True, return_tensors='pt')
     if verbose:
         print(f"Num tokens: {len(model_inputs['input_ids'][0])}")
     gen_kwargs = {
-        "max_length": 216,
+        "max_length": 512,
         "length_penalty": 0,
         "num_beams": 3,
         "num_return_sequences": 3
@@ -100,6 +97,8 @@ def from_small_text_to_kb(text, verbose=False):
     for sentence_pred in decoded_preds:
         relations = extract_relations_from_model_output(sentence_pred)
         for r in relations:
-            kb.add_relation(r)
+            print(r)
+            if r["head"] and r["tail"] and r["type"]:  # Исключаем пустые связи
+                kb.add_relation(r)
 
     return kb

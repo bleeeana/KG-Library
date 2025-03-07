@@ -1,10 +1,18 @@
 from db import Neo4jConnection
+from analogs.rebel import from_small_text_to_kb, raw_documents
 
+# метод-заглушка
 def extract_relations(text):
     return [
         ("George Orwell", "wrote", "1984"),
         ("1984", "belongs_to", "dystopia")
     ]
+
+def extract_relations_with_rebel(text):
+    for doc in text:
+        kb = from_small_text_to_kb(doc.page_content)
+        print(kb)
+        return [tuple(r.values()) for r in kb.relations]
 
 
 def insert_relations_to_neo4j(relations, conn):
@@ -19,7 +27,8 @@ def insert_relations_to_neo4j(relations, conn):
 
 def main():
     text = "George Orwell wrote 1984, a dystopian novel."
-    relations = extract_relations(text)
+    #relations = extract_relations(text)
+    relations = extract_relations_with_rebel(raw_documents)
     conn = Neo4jConnection()
     insert_relations_to_neo4j(relations, conn)
     print("Связи успешно вставлены в граф!")

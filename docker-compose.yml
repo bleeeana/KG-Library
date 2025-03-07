@@ -1,24 +1,6 @@
-version: '3.8'
+version: '3.9'
 
 services:
-  neo4j:
-    image: neo4j:latest
-    container_name: neo4j_container
-    restart: always
-    environment:
-      - NEO4J_AUTH=${NEO4J_AUTH}
-    volumes:
-      - neo4j_data:/data
-    healthcheck:
-      test: [ "CMD", "wget", "http://localhost:7474" ]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
-    ports:
-      - "7474:7474"
-      - "7687:7687"
-
   app:
     build: .
     depends_on:
@@ -26,6 +8,25 @@ services:
         condition: service_healthy
     environment:
       - NEO4J_AUTH=${NEO4J_AUTH}
+      - NEO4J_URI=${NEO4J_URI}
+
+  neo4j:
+    image: neo4j:5.26.3
+    container_name: neo4j_container
+    restart: always
+    environment:
+      - NEO4J_AUTH=${NEO4J_AUTH}
+    volumes:
+      - neo4j_data:/data
+    ports:
+      - "7474:7474"  # HTTP-интерфейс Neo4j
+      - "7687:7687"  # Bolt-протокол
+    healthcheck:
+      test: [ "CMD", "wget", "http://localhost:7474" ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
 volumes:
   neo4j_data:

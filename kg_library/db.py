@@ -7,6 +7,7 @@ class Neo4jConnection:
         self.uri = uri or NEO4J_URI
         self.user = user or NEO4J_AUTH[0]
         self.password = password or NEO4J_AUTH[1]
+        print(f"Connecting to Neo4j at {self.uri} as {self.user} with password {self.password}")
         self.driver = GraphDatabase.driver(self.uri, auth=(self.user, self.password))
 
     def close(self):
