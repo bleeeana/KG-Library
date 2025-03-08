@@ -1,7 +1,12 @@
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from langchain_community.document_loaders import WikipediaLoader
-
+'''
+Этот код предназначен для извлечения связей из текста с помощью модели Babelscape/rebel-large.
+Плюс решения: 1. Хорошо работает с небольшими текстами
+Минусы решения: 1. Плохо работает с большими текстами, выдает повторяющиеся триплеты, неверные
+                2. не формирует эмбеддинги, только текстовые триплеты
+'''
 text_splitter = RecursiveCharacterTextSplitter(
     chunk_size=1024,
     length_function=len,
@@ -102,3 +107,18 @@ def from_small_text_to_kb(text, verbose=False):
                 kb.add_relation(r)
 
     return kb
+
+def main():
+    print(raw_documents)
+    for doc in raw_documents:
+        kb = from_small_text_to_kb(doc.page_content, verbose=True)
+        for relation in kb.relations:
+            head = relation['head']
+            relationship = relation['type']
+            tail = relation['tail']
+            cypher = f"MERGE (h:`{head}`)" + f" MERGE (t:`{tail}`)" + f" MERGE (h)-[:`{relationship}`]->(t)"
+            print(cypher)
+
+
+if __name__ == "__main__":
+    main()

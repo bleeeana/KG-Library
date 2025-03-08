@@ -9,11 +9,12 @@ def extract_relations(text):
     ]
 
 def extract_relations_with_rebel(text):
+    result_tuple = []
     for doc in text:
-        kb = from_small_text_to_kb(doc.page_content)
+        kb = from_small_text_to_kb(doc.page_content, verbose=True)
         print(kb)
-        return [tuple(r.values()) for r in kb.relations]
-
+        result_tuple += [tuple(r.values()) for r in kb.relations]
+    return result_tuple
 
 def insert_relations_to_neo4j(relations, conn):
     for subj, rel, obj in relations:
