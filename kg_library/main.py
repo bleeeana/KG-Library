@@ -16,6 +16,13 @@ def extract_relations_with_rebel(text):
         result_tuple += [tuple(r.values()) for r in kb.relations]
     return result_tuple
 
+def extract_relations_with_relik(text):
+    result_tuple = []
+    for doc in text:
+        relations = extract_relations_from_model_output(doc.page_content)
+        result_tuple += [tuple(r.values()) for r in relations]
+    return result_tuple
+
 def insert_relations_to_neo4j(relations, conn):
     for subj, rel, obj in relations:
         query = (
