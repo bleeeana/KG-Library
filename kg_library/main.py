@@ -1,5 +1,5 @@
 from db import Neo4jConnection
-from analogs.rebel import from_small_text_to_kb, raw_documents
+from models.entity_extraction.rebel import from_small_text_to_kb, raw_documents
 
 # метод-заглушка
 def extract_relations(text):
@@ -16,13 +16,6 @@ def extract_relations_with_rebel(text):
         result_tuple += [tuple(r.values()) for r in kb.relations]
     return result_tuple
 
-def extract_relations_with_relik(text):
-    result_tuple = []
-    for doc in text:
-        relations = extract_relations_from_model_output(doc.page_content)
-        result_tuple += [tuple(r.values()) for r in relations]
-    return result_tuple
-
 def insert_relations_to_neo4j(relations, conn):
     for subj, rel, obj in relations:
         query = (
@@ -31,7 +24,6 @@ def insert_relations_to_neo4j(relations, conn):
             "MERGE (a)-[r:RELATION {type: $rel}]->(b)"
         )
         conn.run_query(query, {"subj": subj, "rel": rel, "obj": obj})
-
 
 def main():
     text = "George Orwell wrote 1984, a dystopian novel."
