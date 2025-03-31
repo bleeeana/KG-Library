@@ -1,5 +1,5 @@
 from neo4j import GraphDatabase
-from __init__ import NEO4J_URI, NEO4J_AUTH
+from . import NEO4J_URI, NEO4J_AUTH
 
 
 class Neo4jConnection:

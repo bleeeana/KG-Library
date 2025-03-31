@@ -1,4 +1,4 @@
-from kg_library.common.EdgeData import EdgeData
+from kg_library.common import EdgeData
 from typing import List
 class NodeData:
     def __init__(self, name, input : EdgeData = None, output : EdgeData = None):

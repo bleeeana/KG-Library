@@ -1,8 +1,6 @@
 from typing import Optional, Tuple
-from kg_library.common.EdgeData import EdgeData
-from kg_library.common.NodeData import NodeData
+from kg_library.common import NodeData, EdgeData
 from kg_library.db import Neo4jConnection
-from collections import deque
 from typing import List
 
 class GraphData:
@@ -29,6 +27,7 @@ class GraphData:
         head_node = self.__find_or_create_node(head)
         tail_node = self.__find_or_create_node(tail)
         relation_edge = EdgeData(relation)
+        self.add_edge(relation_edge)
         relation_edge.set_ends(head_node, tail_node)
         head_node.add_output(relation_edge)
         tail_node.add_input(relation_edge)
@@ -49,6 +48,22 @@ class GraphData:
 
     def fill_database(self, neo4j_connection : Neo4jConnection):
         triplets = self.__get_triplets()
+        for subj, rel, obj in triplets:
+            query = (
+                "MERGE (a:Entity {name: $subj}) "
+                "MERGE (b:Entity {name: $obj}) "
+                "MERGE (a)-[r:RELATION {type: $rel}]->(b)"
+            )
+            neo4j_connection.run_query(query, {"subj": subj, "rel": rel, "obj": obj})
+
+    def get_adjacency_matrix(self) -> List[List[int]]:
+        result = []
+        for node in self.nodes:
+            result.append([0] * len(self.nodes))
+            for edge in node.get_outputs():
+                target_node = edge.object
+                result[-1][self.nodes.index(target_node)] = 1
+        return result
 
     def __get_triplets(self) -> List[Tuple[str, Optional[str], Optional[str]]]:
         triplets_set = set()

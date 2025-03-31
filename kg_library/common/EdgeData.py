@@ -1,4 +1,4 @@
-from kg_library.common.NodeData import NodeData
+from kg_library.common import NodeData
 
 class EdgeData:
     def __init__(self, relation : str):
