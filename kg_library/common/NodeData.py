@@ -5,8 +5,10 @@ class NodeData:
         self.__inputs = []
         self.__outputs = []
         self.name = name
-        self.__inputs.append(input)
-        self.__outputs.append(output)
+        if input is not None:
+            self.add_input(input)
+        if output is not None:
+            self.add_output(output)
         print(self.__inputs)
         self.__embedding = None
 
@@ -21,6 +23,9 @@ class NodeData:
 
     def get_outputs(self) -> List[EdgeData]:
         return self.__outputs
+
+    def contains_edge(self, edge : str) -> bool:
+        return any(str(e) == edge for e in self.__inputs) or any(str(e) == edge for e in self.__outputs)
 
     def __str__(self) -> str:
         return f"node {self.name}"

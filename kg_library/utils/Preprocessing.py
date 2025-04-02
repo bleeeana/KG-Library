@@ -4,7 +4,7 @@ from spacy.language import Doc
 from kg_library.common import data_frame
 
 class Preprocessing:
-    def __init__(self, model_name = 'en_core_web_trf'):
+    def __init__(self, model_name = 'en_core_web_lg'):
         if not spacy.util.is_package(model_name):
             spacy.cli.download(model_name)
         self.nlp = spacy.load(model_name)

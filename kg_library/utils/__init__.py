@@ -1,1 +1,1 @@
-from .Preprocessing import Preprocessing
+from kg_library.utils.Preprocessing import Preprocessing

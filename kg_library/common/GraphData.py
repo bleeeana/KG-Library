@@ -22,10 +22,28 @@ class GraphData:
         for e in self.edges:
             print(f"  {e}")
 
+    def add_loop_triplet(self, node : str):
+        node = self.__find_or_create_node(node)
+        loop_edge = EdgeData("loop")
+        self.add_edge(loop_edge)
+        loop_edge.set_ends(node, node)
+        node.add_input(loop_edge)
+        node.add_output(loop_edge)
+
+    def __add_loop_triplet(self, node : NodeData):
+        if  not node.contains_edge("loop"):
+            loop_edge = EdgeData("loop")
+            self.add_edge(loop_edge)
+            loop_edge.set_ends(node, node)
+            node.add_input(loop_edge)
+            node.add_output(loop_edge)
+
     def add_new_triplet(self, head : str, relation : str, tail : str) -> None:
         print(head, relation, tail)
         head_node = self.__find_or_create_node(head)
+        self.__add_loop_triplet(head_node)
         tail_node = self.__find_or_create_node(tail)
+        self.__add_loop_triplet(tail_node)
         relation_edge = EdgeData(relation)
         self.add_edge(relation_edge)
         relation_edge.set_ends(head_node, tail_node)
@@ -48,6 +66,7 @@ class GraphData:
 
     def fill_database(self, neo4j_connection : Neo4jConnection):
         triplets = self.__get_triplets()
+        print(triplets)
         for subj, rel, obj in triplets:
             query = (
                 "MERGE (a:Entity {name: $subj}) "
@@ -67,8 +86,12 @@ class GraphData:
 
     def __get_triplets(self) -> List[Tuple[str, Optional[str], Optional[str]]]:
         triplets_set = set()
+        print("generating triplets from graph:")
+        self.print()
         for node in self.nodes:
+            print(node)
             for edge in node.get_outputs():
+                print(edge)
                 target_node = edge.object
                 triplets_set.add((node.name, edge.get_relation(), target_node.name))
             for edge in node.get_inputs():

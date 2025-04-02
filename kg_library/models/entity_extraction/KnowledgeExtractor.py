@@ -40,7 +40,7 @@ class KnowledgeGraphExtractor:
             relations.add((subject.strip(), relation.strip(), object_.strip()))
         return relations
 
-    def extract_from_text(self, text : str, num_beams=2, max_length=512):
+    def extract_from_text(self, text : str, num_beams=5, max_length=1024) -> set:
         text = self.preprocessor.preprocessing(text)
         print(text)
         model_inputs = self.tokenizer(text, max_length=max_length, padding=True, truncation=True, return_tensors="pt")
@@ -60,6 +60,8 @@ class KnowledgeGraphExtractor:
         print(decoded_preds)
         for sentence_pred in decoded_preds:
             self.triplets.update(self.__extract_relations(sentence_pred))
+
+        return self.triplets
 
     def print_knowledge_graph(self):
         print("Extracted Knowledge Graph:")
