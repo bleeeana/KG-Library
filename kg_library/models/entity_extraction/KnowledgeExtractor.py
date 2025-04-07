@@ -44,7 +44,6 @@ class KnowledgeGraphExtractor:
         text = self.preprocessor.preprocessing(text)
         print(text)
         model_inputs = self.tokenizer(text, max_length=max_length, padding=True, truncation=True, return_tensors="pt")
-        print(model_inputs)
         gen_kwags = {
             "max_length": max_length,
             "num_beams": num_beams,
@@ -57,10 +56,8 @@ class KnowledgeGraphExtractor:
         )
 
         decoded_preds = self.tokenizer.batch_decode(generated_tokens, skip_special_tokens=False)
-        print(decoded_preds)
         for sentence_pred in decoded_preds:
             self.triplets.update(self.__extract_relations(sentence_pred))
-
         return self.triplets
 
     def print_knowledge_graph(self):

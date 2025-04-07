@@ -1,13 +1,18 @@
 from datasets import load_dataset
 import pandas as pd
+import os
+from datasets import load_dataset
+
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
+
+cache_path = os.path.join(project_root, "cache/datasets")
 
 literature_dataset = load_dataset(
     "kingkangkr/book_summary_dataset",
-    split="train[:1%]",
-    cache_dir="/cache/datasets"
+    cache_dir=cache_path
 )
 
-data_frame = pd.DataFrame(literature_dataset)
+data_frame = pd.DataFrame(literature_dataset['train'])
 
 def main():
     print("Первые 5 записей:")

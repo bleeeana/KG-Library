@@ -16,7 +16,7 @@ class Preprocessing:
 
     def __cleaning(self, text: str) -> str:
         clean_text = text.replace("“", '"').replace("”", '"')
-        clean_text = re.sub(r'\s+', ' ', text).strip()
+        clean_text = re.sub(r'\s+', ' ', clean_text).strip()
         return clean_text
 
     def __coreferee_preprocessing(self, coref_doc: Doc) -> str:

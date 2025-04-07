@@ -39,7 +39,6 @@ class GraphData:
             node.add_output(loop_edge)
 
     def add_new_triplet(self, head : str, relation : str, tail : str) -> None:
-        print(head, relation, tail)
         head_node = self.__find_or_create_node(head)
         self.__add_loop_triplet(head_node)
         tail_node = self.__find_or_create_node(tail)
@@ -86,12 +85,8 @@ class GraphData:
 
     def __get_triplets(self) -> List[Tuple[str, Optional[str], Optional[str]]]:
         triplets_set = set()
-        print("generating triplets from graph:")
-        self.print()
         for node in self.nodes:
-            print(node)
             for edge in node.get_outputs():
-                print(edge)
                 target_node = edge.object
                 triplets_set.add((node.name, edge.get_relation(), target_node.name))
             for edge in node.get_inputs():

@@ -35,5 +35,6 @@ datasets = "==3.5.0"
 pysbd = "*"
 spacy-transformers = "1.2.5"
 python-dotenv = "^1.0.0"
+bs4 = "^0.0.2"
 
 [tool.poetry.dev-dependencies]
