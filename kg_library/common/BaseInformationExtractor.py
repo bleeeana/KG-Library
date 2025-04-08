@@ -1,33 +1,23 @@
 import requests
-from typing import Dict, List, Optional
-import xml.etree.ElementTree as ET
-from bs4 import BeautifulSoup
-from urllib.parse import quote  # Вместо requests.utils.quote
+from typing import List, Dict, Optional
+from urllib.parse import quote
+from kg_library import get_config
 
-class WikidataLiteraryWork:
+class WikidataExtractor:
     def __init__(self):
         self.endpoint = "https://query.wikidata.org/sparql"
         self.headers = {
-            "User-Agent": "LiteraryWorkBot/1.0 (example@example.com)",
+            "User-Agent": f"BookInfoBot/1.0 ({get_config()['email']})",
             "Accept": "application/json"
         }
 
-    def _execute_sparql(self, query: str) -> List[Dict]:
-        try:
-            response = requests.get(
-                self.endpoint,
-                headers=self.headers,
-                params={"query": query, "format": "json"},
-                timeout=30
-            )
-            response.raise_for_status()
-            return response.json().get("results", {}).get("bindings", [])
-        except Exception as e:
-            print(f"Query failed: {e}")
-            return []
+    def get_book_info(self, title: str) -> Dict[str, List[Dict]]:
+        query = self._build_query(title)
+        results = self._execute_query(query)
+        return self._parse_results(results)
 
-    def get_work_info(self, title: str) -> List[Dict]:
-        query = f"""
+    def _build_query(self, title: str) -> str:
+        return f"""
         SELECT DISTINCT ?property ?propertyLabel ?value ?valueLabel WHERE {{
           # Находим произведение по точному названию
           ?work rdfs:label "{title}"@en;
@@ -50,15 +40,41 @@ class WikidataLiteraryWork:
           FILTER(?type = ?literaryType)
 
           # Основные свойства
-          {{ ?work wdt:P50 ?value. BIND(wd:P50 AS ?property) }}
+          {{ 
+            ?work wdt:P50 ?value.  # автор
+            ?value wdt:P31 wd:Q5.  # должен быть человеком
+            BIND(wd:P50 AS ?property) 
+          }}
           UNION
-          {{ ?work wdt:P577 ?value. BIND(wd:P577 AS ?property) }}
+          {{ 
+            ?work wdt:P577 ?value.  # дата публикации
+            BIND(wd:P577 AS ?property) 
+          }}
           UNION
-          {{ ?work wdt:P495 ?value. BIND(wd:P495 AS ?property) }}
+          {{ 
+            ?work wdt:P495 ?value.  # страна происхождения
+            BIND(wd:P495 AS ?property) 
+          }}
           UNION
-          {{ ?work wdt:P407 ?value. BIND(wd:P407 AS ?property) }}
+          {{ 
+            ?work wdt:P407 ?value.  # язык
+            BIND(wd:P407 AS ?property) 
+          }}
+
+          # Персонажи
           UNION
-          {{ ?work wdt:P840 ?value. BIND(wd:P840 AS ?property) }}
+          {{ 
+            ?work wdt:P1441|wdt:P674 ?value.
+            ?value wdt:P31/wdt:P279* wd:Q95074.  # вымышленные персонажи
+            BIND(wd:P1441 AS ?property)
+          }}
+
+          # Места действия
+          UNION
+          {{ 
+            ?work wdt:P840 ?value.
+            BIND(wd:P840 AS ?property) 
+          }}
 
           # Метки
           SERVICE wikibase:label {{ 
@@ -66,67 +82,75 @@ class WikidataLiteraryWork:
             ?property rdfs:label ?propertyLabel.
             ?value rdfs:label ?valueLabel.
           }}
+
+          # Фильтры для чистоты данных
+          FILTER EXISTS {{ ?value rdfs:label ?valLabel. FILTER(LANG(?valLabel) = "en") }}
         }}
         ORDER BY ?property ?valueLabel
-        LIMIT 200
         """
-        return self._execute_sparql(query)
 
-class OpenLibraryClient:
-    def __init__(self):
-        self.search_url = "https://openlibrary.org/search.json"
-        self.base_url = "https://openlibrary.org"
-
-    def get_work_subjects(self, title: str) -> Dict[str, List[str]]:
+    def _execute_query(self, query: str) -> List[Dict]:
         try:
-            response = requests.get(self.search_url, params={"title": title}, timeout=15)
+            response = requests.get(
+                self.endpoint,
+                headers=self.headers,
+                params={"query": query, "format": "json"},
+                timeout=30
+            )
             response.raise_for_status()
-            docs = response.json().get("docs", [])
-            if not docs:
-                print("Книга не найдена.")
-                return {}
+            return response.json().get("results", {}).get("bindings", [])
+        except Exception as e:
+            print(f"SPARQL query failed: {e}")
+            return []
 
-            work_key = docs[0].get("key")
-            if not work_key:
-                print("Work key не найден.")
-                return {}
+    def _parse_results(self, results: List[Dict]) -> Dict[str, List[Dict]]:
+        book_info = {
+            "authors": [],
+            "publication_dates": [],
+            "countries": [],
+            "languages": [],
+            "characters": [],
+            "locations": []
+        }
 
-            work_resp = requests.get(f"{self.base_url}{work_key}.json", timeout=15)
-            work_resp.raise_for_status()
-            data = work_resp.json()
-
-            return {
-                "title": [data.get("title")],
-                "people": data.get("subject_people", []),
-                "places": data.get("subject_places", []),
-                "times": data.get("subject_times", []),
-                "subjects": data.get("subjects", [])
+        for item in results:
+            prop = item.get("property", {}).get("value", "")
+            value = {
+                "id": item.get("value", {}).get("value", ""),
+                "label": item.get("valueLabel", {}).get("value", "")
             }
 
-        except Exception as e:
-            print(f"Ошибка при получении данных из Open Library: {e}")
-            return {}
+            if "P50" in prop:
+                book_info["authors"].append(value)
+            elif "P577" in prop:
+                book_info["publication_dates"].append(value)
+            elif "P495" in prop:
+                book_info["countries"].append(value)
+            elif "P407" in prop:
+                book_info["languages"].append(value)
+            elif "P1441" in prop or "P674" in prop:
+                book_info["characters"].append(value)
+            elif "P840" in prop:
+                book_info["locations"].append(value)
 
+        return book_info
 
 if __name__ == "__main__":
-    client = OpenLibraryClient()
+    api = WikidataExtractor()
+    book_title = "Animal Farm"
+    print(f"Информация о книге '{book_title}'...")
+    info = api.get_book_info(book_title)
 
-    info = client.get_work_subjects("A Clockwork Orange")
+    print("\nРезультаты:")
+    print(f"Авторы: {', '.join(a['label'] for a in info['authors'])}")
+    print(f"Даты публикации: {', '.join(d['label'] for d in info['publication_dates'])}")
+    print(f"Страны: {', '.join(c['label'] for c in info['countries'])}")
+    print(f"Языки: {', '.join(l['label'] for l in info['languages'])}")
 
-    if info:
-        print(f"\n {info['title'][0]}")
-        print("\n Люди (включая персонажей):")
-        for person in info["people"]:
-            print(f"- {person}")
+    print("\nПерсонажи:")
+    for char in info["characters"]:
+        print(f"- {char['label']} ({char['id']})")
 
-        print("\nМеста:")
-        for place in info["places"]:
-            print(f"- {place}")
-
-        print("\nЭпохи:")
-        for time in info["times"]:
-            print(f"- {time}")
-
-        print("\nТемы / Категории:")
-        for subject in info["subjects"]:
-            print(f"- {subject}")
+    print("\nМеста действия:")
+    for loc in info["locations"]:
+        print(f"- {loc['label']} ({loc['id']})")
