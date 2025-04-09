@@ -1,6 +1,5 @@
 import requests
-from typing import List, Dict, Optional
-from urllib.parse import quote
+from typing import List, Dict
 from kg_library import get_config
 
 class WikidataExtractor:
@@ -135,22 +134,23 @@ class WikidataExtractor:
 
         return book_info
 
+    def print(self, title : str) -> None:
+        info = api.get_book_info(title)
+
+        print("\nРезультаты:")
+        print(f"Авторы: {', '.join(a['label'] for a in info['authors'])}")
+        print(f"Даты публикации: {', '.join(d['label'] for d in info['publication_dates'])}")
+        print(f"Страны: {', '.join(c['label'] for c in info['countries'])}")
+        print(f"Языки: {', '.join(l['label'] for l in info['languages'])}")
+
+        print("\nПерсонажи:")
+        for char in info["characters"]:
+            print(f"- {char['label']} ({char['id']})")
+
+        print("\nМеста действия:")
+        for loc in info["locations"]:
+            print(f"- {loc['label']} ({loc['id']})")
+
 if __name__ == "__main__":
     api = WikidataExtractor()
-    book_title = "Animal Farm"
-    print(f"Информация о книге '{book_title}'...")
-    info = api.get_book_info(book_title)
-
-    print("\nРезультаты:")
-    print(f"Авторы: {', '.join(a['label'] for a in info['authors'])}")
-    print(f"Даты публикации: {', '.join(d['label'] for d in info['publication_dates'])}")
-    print(f"Страны: {', '.join(c['label'] for c in info['countries'])}")
-    print(f"Языки: {', '.join(l['label'] for l in info['languages'])}")
-
-    print("\nПерсонажи:")
-    for char in info["characters"]:
-        print(f"- {char['label']} ({char['id']})")
-
-    print("\nМеста действия:")
-    for loc in info["locations"]:
-        print(f"- {loc['label']} ({loc['id']})")
+    api.print("Animal Farm")

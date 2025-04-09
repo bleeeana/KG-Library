@@ -42,13 +42,14 @@ class Preprocessing:
     def __split_text_to_segments(self, text: str) -> List[str]:
         return self.segmenter.segment(text)
 
-    def preprocessing(self, text: str) -> str:
+    def preprocessing(self, text: str) -> List[str]:
 
         resolved_text = self.__coreferee_preprocessing(self.nlp(text))
         print(resolved_text)
         #splitted_text = self.__split_text_to_segments(resolved_text)
         clean_text = re.sub(r'\s+([.,!?])', r'\1', resolved_text)
-        return clean_text
+        splitted_text = self.__split_text_to_segments(clean_text)
+        return splitted_text
 
     def __lemmatization(self, text: str) -> str:
         if not text or not isinstance(text, str):

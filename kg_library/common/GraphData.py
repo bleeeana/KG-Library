@@ -1,4 +1,5 @@
 from typing import Optional, Tuple
+from sentence_transformers import SentenceTransformer, util
 from kg_library.common import NodeData, EdgeData
 from kg_library.db import Neo4jConnection
 from typing import List
@@ -38,7 +39,21 @@ class GraphData:
             node.add_input(loop_edge)
             node.add_output(loop_edge)
 
-    def add_new_triplet(self, head : str, relation : str, tail : str) -> None:
+    def __check_for_synonyms(self, new_triplet : Tuple[str, str, str], model : SentenceTransformer) -> bool:
+        head, relation, tail = new_triplet
+        existing_triplets = self.__get_triplets()
+        for existing_triplet in existing_triplets:
+            existing_head, existing_relation, existing_tail = existing_triplet
+            existing_triplet_embedding = model.encode(f"{existing_head} {existing_relation} {existing_tail}")
+            similarity = util.cos_sim(existing_triplet_embedding, model.encode(f"{head} {relation} {tail}"))
+            if similarity > 0.9:
+                return True
+
+        return False
+
+    def add_new_triplet(self, head : str, relation : str, tail : str, model : SentenceTransformer) -> None:
+        if self.__check_for_synonyms((head, relation, tail), model):
+            return
         head_node = self.__find_or_create_node(head)
         self.__add_loop_triplet(head_node)
         tail_node = self.__find_or_create_node(tail)
@@ -93,3 +108,4 @@ class GraphData:
                 source_node = edge.subject
                 triplets_set.add((source_node.name, edge.get_relation(), node.name))
         return list(triplets_set)
+
