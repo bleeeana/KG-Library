@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Set
 from sentence_transformers import SentenceTransformer, util
 from kg_library.common import NodeData, EdgeData
 from kg_library.db import Neo4jConnection
@@ -8,6 +8,8 @@ class GraphData:
     def __init__(self):
         self.nodes: List[NodeData] = []  # Список, содержащий элементы типа NodeData
         self.edges: List[EdgeData] = []
+        self.__synonymic_model = SentenceTransformer('all-MiniLM-L6-v2')
+        self.triplets : List[Tuple[NodeData, EdgeData, NodeData]] = []
 
     def add_node(self, node : NodeData):
         self.nodes.append(node)
@@ -16,12 +18,9 @@ class GraphData:
         self.edges.append(edge)
 
     def print(self):
-        print("Nodes:")
-        for n in self.nodes:
-            print(f"  {n}")
-        print("Edges:")
-        for e in self.edges:
-            print(f"  {e}")
+        for triplet in self.triplets:
+            head, relation, tail = triplet
+            print(f"{head.name} -> {relation.get_relation()} -> {tail.name}")
 
     def add_loop_triplet(self, node : str):
         node = self.__find_or_create_node(node)
@@ -30,39 +29,50 @@ class GraphData:
         loop_edge.set_ends(node, node)
         node.add_input(loop_edge)
         node.add_output(loop_edge)
+        self.triplets.append((node, loop_edge, node))
+
+    def add_loop_reversed_triplet(self):
+        for triplet in self.triplets:
+            head, relation, tail = triplet
+            self.add_new_triplet(tail.name, f"{relation.get_relation()}:reversed", head.name)
+        for node in self.nodes:
+            self.__add_loop_triplet(node)
 
     def __add_loop_triplet(self, node : NodeData):
-        if  not node.contains_edge("loop"):
+        if not node.contains_edge("loop"):
             loop_edge = EdgeData("loop")
             self.add_edge(loop_edge)
             loop_edge.set_ends(node, node)
             node.add_input(loop_edge)
             node.add_output(loop_edge)
+            self.triplets.append((node, loop_edge, node))
 
-    def __check_for_synonyms(self, new_triplet : Tuple[str, str, str], model : SentenceTransformer) -> bool:
+    def __check_for_synonyms(self, new_triplet : Tuple[str, str, str]) -> bool:
         head, relation, tail = new_triplet
-        existing_triplets = self.__get_triplets()
-        for existing_triplet in existing_triplets:
+        new_embedding = self.__synonymic_model.encode(f"{head} {relation} {tail}")
+        for existing_triplet in self.triplets:
             existing_head, existing_relation, existing_tail = existing_triplet
-            existing_triplet_embedding = model.encode(f"{existing_head} {existing_relation} {existing_tail}")
-            similarity = util.cos_sim(existing_triplet_embedding, model.encode(f"{head} {relation} {tail}"))
-            if similarity > 0.9:
+            existing_embedding = self.__synonymic_model.encode(f"{existing_head.name} {existing_relation.get_relation()} {existing_tail.name}")
+            embedding_similarity = util.cos_sim(new_embedding, existing_embedding)
+            #print(f"Existing triplet: {existing_triplet}", f"New triplet: {new_triplet}")
+            #print(f"Embedding similarity: {embedding_similarity}")
+            if embedding_similarity > 0.7:
                 return True
-
         return False
 
-    def add_new_triplet(self, head : str, relation : str, tail : str, model : SentenceTransformer) -> None:
-        if self.__check_for_synonyms((head, relation, tail), model):
+    def add_new_triplet(self, head : str, relation : str, tail : str) -> None:
+        if self.__check_for_synonyms((head, relation, tail)):
             return
         head_node = self.__find_or_create_node(head)
-        self.__add_loop_triplet(head_node)
+        #self.__add_loop_triplet(head_node)
         tail_node = self.__find_or_create_node(tail)
-        self.__add_loop_triplet(tail_node)
+        #self.__add_loop_triplet(tail_node)
         relation_edge = EdgeData(relation)
         self.add_edge(relation_edge)
         relation_edge.set_ends(head_node, tail_node)
         head_node.add_output(relation_edge)
         tail_node.add_input(relation_edge)
+        self.triplets.append((head_node, relation_edge, tail_node))
 
     def __find_or_create_node(self, name : str) -> NodeData:
         if self.find_node(name) is None:
@@ -76,12 +86,11 @@ class GraphData:
         return next((n for n in self.nodes if n.name == node), None)
 
     def find_edge(self, edge: str) -> Optional[EdgeData]:
-        return next((e for e in self.edges if str(e) == edge), None)
+        return next((e for e in self.edges if e.get_relation() == edge), None)
 
     def fill_database(self, neo4j_connection : Neo4jConnection):
-        triplets = self.__get_triplets()
-        print(triplets)
-        for subj, rel, obj in triplets:
+        print(self.triplets)
+        for subj, rel, obj in self.triplets:
             query = (
                 "MERGE (a:Entity {name: $subj}) "
                 "MERGE (b:Entity {name: $obj}) "
@@ -98,14 +107,8 @@ class GraphData:
                 result[-1][self.nodes.index(target_node)] = 1
         return result
 
-    def __get_triplets(self) -> List[Tuple[str, Optional[str], Optional[str]]]:
-        triplets_set = set()
-        for node in self.nodes:
-            for edge in node.get_outputs():
-                target_node = edge.object
-                triplets_set.add((node.name, edge.get_relation(), target_node.name))
-            for edge in node.get_inputs():
-                source_node = edge.subject
-                triplets_set.add((source_node.name, edge.get_relation(), node.name))
-        return list(triplets_set)
-
+    def get_unique_sets(self) -> Tuple[Set[str], Set[str]]:
+        return (
+            {node.name for node in self.nodes},
+            {edge.get_relation() for edge in self.edges}
+        )
