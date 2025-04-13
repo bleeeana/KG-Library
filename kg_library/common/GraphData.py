@@ -1,12 +1,13 @@
-from typing import Optional, Tuple, Set
+from typing import Optional, Tuple
 from sentence_transformers import SentenceTransformer, util
 from kg_library.common import NodeData, EdgeData
 from kg_library.db import Neo4jConnection
 from typing import List
+from collections import OrderedDict
 
 class GraphData:
     def __init__(self):
-        self.nodes: List[NodeData] = []  # Список, содержащий элементы типа NodeData
+        self.nodes: List[NodeData] = []
         self.edges: List[EdgeData] = []
         self.__synonymic_model = SentenceTransformer('all-MiniLM-L6-v2')
         self.triplets : List[Tuple[NodeData, EdgeData, NodeData]] = []
@@ -32,9 +33,10 @@ class GraphData:
         self.triplets.append((node, loop_edge, node))
 
     def add_loop_reversed_triplet(self):
-        for triplet in self.triplets:
+        true_triplets = self.triplets.copy()
+        for triplet in true_triplets:
             head, relation, tail = triplet
-            self.add_new_triplet(tail.name, f"{relation.get_relation()}:reversed", head.name)
+            self.add_new_triplet(tail.name, f"{relation.get_relation()}:reversed", head.name, False)
         for node in self.nodes:
             self.__add_loop_triplet(node)
 
@@ -56,17 +58,17 @@ class GraphData:
             embedding_similarity = util.cos_sim(new_embedding, existing_embedding)
             #print(f"Existing triplet: {existing_triplet}", f"New triplet: {new_triplet}")
             #print(f"Embedding similarity: {embedding_similarity}")
-            if embedding_similarity > 0.7:
+            if embedding_similarity > 0.75:
                 return True
         return False
 
-    def add_new_triplet(self, head : str, relation : str, tail : str) -> None:
-        if self.__check_for_synonyms((head, relation, tail)):
-            return
+    def add_new_triplet(self, head : str, relation : str, tail : str, check_synonyms : bool = True) -> None:
+        print(f"Adding new triplet: {head} -> {relation} -> {tail}, check synonyms: {check_synonyms}")
+        if check_synonyms:
+            if self.__check_for_synonyms((head, relation, tail)):
+                return
         head_node = self.__find_or_create_node(head)
-        #self.__add_loop_triplet(head_node)
         tail_node = self.__find_or_create_node(tail)
-        #self.__add_loop_triplet(tail_node)
         relation_edge = EdgeData(relation)
         self.add_edge(relation_edge)
         relation_edge.set_ends(head_node, tail_node)
@@ -107,8 +109,7 @@ class GraphData:
                 result[-1][self.nodes.index(target_node)] = 1
         return result
 
-    def get_unique_sets(self) -> Tuple[Set[str], Set[str]]:
-        return (
-            {node.name for node in self.nodes},
-            {edge.get_relation() for edge in self.edges}
-        )
+    def get_unique_sets(self) -> Tuple[List[str], List[str]]:
+        unique_nodes = list(OrderedDict.fromkeys(node.name for node in self.nodes))
+        unique_relations = list(OrderedDict.fromkeys(edge.get_relation() for edge in self.edges))
+        return unique_nodes, unique_relations
