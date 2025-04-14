@@ -1,20 +1,32 @@
 import requests
+from bs4 import BeautifulSoup
+from urllib.parse import quote
+from typing import Dict, List
 from kg_library import get_config
 
 class WikidataExtractor:
     def __init__(self):
         self.endpoint = "https://query.wikidata.org/sparql"
+        self.openlibrary_base = "https://openlibrary.org"
         self.headers = {
             "User-Agent": f"BookInfoBot/1.0 ({get_config()['email']})",
             "Accept": "application/json"
         }
 
     def get_book_info(self, title: str) -> dict[str, list[dict]]:
-        query = self._build_query(title)
-        results = self._execute_query(query)
-        return self._parse_results(results)
+        query = self.build_query(title)
+        results = self.execute_query(query)
+        parsed = self.parse_results(results)
+        if not parsed["characters"]:
+            characters = self.get_openlibrary_characters(title)
+            for char in characters:
+                for author in parsed["authors"]:
+                    if author["label"].lower().strip() not in char["label"].lower().strip():
+                        parsed["characters"].append(char)
+        return parsed
 
-    def _build_query(self, title: str) -> str:
+
+    def build_query(self, title: str) -> str:
         return f"""
         SELECT DISTINCT ?property ?propertyLabel ?value ?valueLabel WHERE {{
           # Находим произведение по точному названию
@@ -87,7 +99,7 @@ class WikidataExtractor:
         ORDER BY ?property ?valueLabel
         """
 
-    def _execute_query(self, query: str) -> list[dict]:
+    def execute_query(self, query: str) -> list[dict]:
         try:
             response = requests.get(
                 self.endpoint,
@@ -101,7 +113,7 @@ class WikidataExtractor:
             print(f"SPARQL query failed: {e}")
             return []
 
-    def _parse_results(self, results: list[dict]) -> dict[str, list[dict]]:
+    def parse_results(self, results: list[dict]) -> dict[str, list[dict]]:
         book_info = {
             "authors": [],
             "publication_dates": [],
@@ -133,6 +145,47 @@ class WikidataExtractor:
 
         return book_info
 
+    def get_openlibrary_characters(self, title: str) -> List[Dict]:
+        try:
+            search_url = f"{self.openlibrary_base}/search.json?q={quote(title)}"
+            search_res = requests.get(search_url, timeout=15).json()
+
+            if not search_res.get('docs'):
+                return []
+
+            work_key = search_res['docs'][0]['key']
+            work_url = f"{self.openlibrary_base}{work_key}.json"
+            work_data = requests.get(work_url, timeout=15).json()
+
+            characters = []
+
+            if 'subject_people' in work_data:
+                characters.extend([{
+                    "id": f"ol:{p.split('/')[-1]}",
+                    "label": p.replace(' (Person)', ''),
+                    "source": "openlibrary"
+                } for p in work_data['subject_people'] if isinstance(p, str)])
+
+            html_url = f"{self.openlibrary_base}{work_key}"
+            html = requests.get(html_url, timeout=15).text
+            soup = BeautifulSoup(html, 'html.parser')
+
+            for h2 in soup.find_all('h2'):
+                if 'character' in h2.text.lower():
+                    for li in h2.find_next_sibling('ul').find_all('li'):
+                        char_name = li.text.strip()
+                        characters.append({
+                            "id": f"ol:char_{hash(char_name)}",
+                            "label": char_name,
+                            "source": "openlibrary_html"
+                        })
+
+            return characters
+
+        except Exception as e:
+            print(f"OpenLibrary query failed: {e}")
+            return []
+
     def print(self, title : str) -> None:
         info = api.get_book_info(title)
 
@@ -152,4 +205,4 @@ class WikidataExtractor:
 
 if __name__ == "__main__":
     api = WikidataExtractor()
-    api.print("Animal Farm")
+    api.print("1984")

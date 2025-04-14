@@ -1,9 +1,10 @@
 from kg_library.common import EdgeData
 class NodeData:
-    def __init__(self, name, input_relation : EdgeData = None, output_relation : EdgeData = None):
+    def __init__(self, name, input_relation : EdgeData = None, output_relation : EdgeData = None, feature : str = None):
         self.__input_relations = []
         self.__output_relations = []
         self.name = name
+        self.feature = feature
         if input_relation is not None:
             self.add_input(input_relation)
         if output_relation is not None:

@@ -3,6 +3,7 @@ from kg_library.common import NodeData, EdgeData
 from kg_library.db import Neo4jConnection
 from collections import OrderedDict
 from typing import Optional
+import numpy as np
 
 class GraphData:
     def __init__(self):
@@ -20,7 +21,7 @@ class GraphData:
     def print(self):
         for triplet in self.triplets:
             head, relation, tail = triplet
-            print(f"{head.name} -> {relation.get_relation()} -> {tail.name}")
+            print(f"{head.name}({head.feature}) -> {relation.get_relation()} -> {tail.name}({tail.feature})")
 
     def add_loop_triplet(self, node : str):
         node = self.__find_or_create_node(node)
@@ -61,13 +62,13 @@ class GraphData:
                 return True
         return False
 
-    def add_new_triplet(self, head : str, relation : str, tail : str, check_synonyms : bool = True) -> None:
-        print(f"Adding new triplet: {head} -> {relation} -> {tail}, check synonyms: {check_synonyms}")
+    def add_new_triplet(self, head : str, relation : str, tail : str, check_synonyms : bool = True, head_feature : str = None, tail_feature : str = None) -> None:
+        #print(f"Adding new triplet: {head}({head_feature}) -> {relation} -> {tail}({tail_feature}), check synonyms: {check_synonyms}")
         if check_synonyms:
             if self.__check_for_synonyms((head, relation, tail)):
                 return
-        head_node = self.__find_or_create_node(head)
-        tail_node = self.__find_or_create_node(tail)
+        head_node = self.__find_or_create_node(head, head_feature)
+        tail_node = self.__find_or_create_node(tail, tail_feature)
         relation_edge = EdgeData(relation)
         self.add_edge(relation_edge)
         relation_edge.set_ends(head_node, tail_node)
@@ -75,13 +76,17 @@ class GraphData:
         tail_node.add_input(relation_edge)
         self.triplets.append((head_node, relation_edge, tail_node))
 
-    def __find_or_create_node(self, name : str) -> NodeData:
+    def __find_or_create_node(self, name : str, feature : str = None) -> NodeData:
         if self.find_node(name) is None:
-            node = NodeData(name)
+            node = NodeData(name, feature=feature)
             self.add_node(node)
             return node
         else:
-            return self.find_node(name)
+            node = self.find_node(name)
+            if node.feature is None and feature is not None:
+                print(f"Setting feature for node {name} to {feature} from {node.feature}")
+                node.feature = feature
+            return node
 
     def find_node(self, node: str) -> Optional[NodeData]:
         return next((n for n in self.nodes if n.name == node), None)
