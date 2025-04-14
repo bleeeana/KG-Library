@@ -54,7 +54,7 @@ class EmbeddingPrepareTest(unittest.TestCase):
     def test_creating_leaf_tensor(self):
         graph = create_test_graph()
         preprocessor = EmbeddingPreprocessor(graph)
-        hetero_graph = preprocessor.build_hetero_graph()
+        hetero_graph, _, _, _ = preprocessor.build_hetero_graph()
         print(hetero_graph.to_dict())
         print(hetero_graph.metadata())
         self.assertIsNotNone(hetero_graph)
