@@ -1,5 +1,4 @@
 import requests
-from typing import List, Dict
 from kg_library import get_config
 
 class WikidataExtractor:
@@ -10,7 +9,7 @@ class WikidataExtractor:
             "Accept": "application/json"
         }
 
-    def get_book_info(self, title: str) -> Dict[str, List[Dict]]:
+    def get_book_info(self, title: str) -> dict[str, list[dict]]:
         query = self._build_query(title)
         results = self._execute_query(query)
         return self._parse_results(results)
@@ -88,7 +87,7 @@ class WikidataExtractor:
         ORDER BY ?property ?valueLabel
         """
 
-    def _execute_query(self, query: str) -> List[Dict]:
+    def _execute_query(self, query: str) -> list[dict]:
         try:
             response = requests.get(
                 self.endpoint,
@@ -102,7 +101,7 @@ class WikidataExtractor:
             print(f"SPARQL query failed: {e}")
             return []
 
-    def _parse_results(self, results: List[Dict]) -> Dict[str, List[Dict]]:
+    def _parse_results(self, results: list[dict]) -> dict[str, list[dict]]:
         book_info = {
             "authors": [],
             "publication_dates": [],

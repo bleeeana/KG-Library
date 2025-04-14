@@ -1,5 +1,4 @@
 from kg_library.common import EdgeData
-from typing import List
 class NodeData:
     def __init__(self, name, input_relation : EdgeData = None, output_relation : EdgeData = None):
         self.__input_relations = []
@@ -17,10 +16,10 @@ class NodeData:
     def add_output(self, edge : EdgeData):
         self.__output_relations.append(edge)
 
-    def get_inputs(self) -> List[EdgeData]:
+    def get_inputs(self) -> list[EdgeData]:
         return self.__input_relations
 
-    def get_outputs(self) -> List[EdgeData]:
+    def get_outputs(self) -> list[EdgeData]:
         return self.__output_relations
 
     def contains_edge(self, edge : str) -> bool:

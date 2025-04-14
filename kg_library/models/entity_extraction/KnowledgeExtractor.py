@@ -1,6 +1,5 @@
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from kg_library.utils import Preprocessing
-from typing import List
 
 class KnowledgeGraphExtractor:
     def __init__(self, model_name="Babelscape/rebel-large"):

@@ -1,16 +1,15 @@
-from typing import Optional, Tuple
 from sentence_transformers import SentenceTransformer, util
 from kg_library.common import NodeData, EdgeData
 from kg_library.db import Neo4jConnection
-from typing import List
 from collections import OrderedDict
+from typing import Optional
 
 class GraphData:
     def __init__(self):
-        self.nodes: List[NodeData] = []
-        self.edges: List[EdgeData] = []
+        self.nodes: list[NodeData] = []
+        self.edges: list[EdgeData] = []
         self.__synonymic_model = SentenceTransformer('all-MiniLM-L6-v2')
-        self.triplets : List[Tuple[NodeData, EdgeData, NodeData]] = []
+        self.triplets : list[tuple[NodeData, EdgeData, NodeData]] = []
 
     def add_node(self, node : NodeData):
         self.nodes.append(node)
@@ -49,7 +48,7 @@ class GraphData:
             node.add_output(loop_edge)
             self.triplets.append((node, loop_edge, node))
 
-    def __check_for_synonyms(self, new_triplet : Tuple[str, str, str]) -> bool:
+    def __check_for_synonyms(self, new_triplet : tuple[str, str, str]) -> bool:
         head, relation, tail = new_triplet
         new_embedding = self.__synonymic_model.encode(f"{head} {relation} {tail}")
         for existing_triplet in self.triplets:
@@ -100,7 +99,7 @@ class GraphData:
             )
             neo4j_connection.run_query(query, {"subj": subj, "rel": rel, "obj": obj})
 
-    def get_adjacency_matrix(self) -> List[List[int]]:
+    def get_adjacency_matrix(self) -> list[list[int]]:
         result = []
         for node in self.nodes:
             result.append([0] * len(self.nodes))
@@ -109,7 +108,7 @@ class GraphData:
                 result[-1][self.nodes.index(target_node)] = 1
         return result
 
-    def get_unique_sets(self) -> Tuple[List[str], List[str]]:
+    def get_unique_sets(self) -> tuple[list[str], list[str]]:
         unique_nodes = list(OrderedDict.fromkeys(node.name for node in self.nodes))
         unique_relations = list(OrderedDict.fromkeys(edge.get_relation() for edge in self.edges))
         return unique_nodes, unique_relations

@@ -1,4 +1,3 @@
-from typing import Dict, List
 from kg_library.common import GraphData, WikidataExtractor
 from kg_library.models import KnowledgeGraphExtractor, EmbeddingPreprocessor
 from kg_library.common import data_frame
@@ -38,7 +37,7 @@ class AppFacade:
         self.graph.fill_database(self.neo4j_connection)
 
 
-    def import_wikidata_information(self, info : Dict[str, List[Dict]], title):
+    def import_wikidata_information(self, info : dict[str, list[dict]], title):
         print(info)
         '''
         book_info = {
