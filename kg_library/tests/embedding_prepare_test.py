@@ -14,9 +14,13 @@ def create_test_graph() -> GraphData:
     graph.add_new_triplet("Anna Karenina", "is_a", "novel", check_synonyms=True, head_feature="book", tail_feature="type")
     graph.add_new_triplet("Crime and Punishment", "is_a", "novel", check_synonyms=True, head_feature="book", tail_feature="type")
     graph.add_new_triplet("The Cherry Orchard", "is_a", "play", check_synonyms=True, head_feature="book", tail_feature="type")
+    graph.add_new_triplet("The Brothers Karamazov", "is_a", "novel", check_synonyms=True, head_feature="book", tail_feature="type")
+    graph.add_new_triplet("Idiot", "is_a", "novel", check_synonyms=True, head_feature="book", tail_feature="type")
 
     graph.add_new_triplet("Leo Tolstoy", "wrote", "War and Peace", check_synonyms=True, head_feature="person", tail_feature="book")
     graph.add_new_triplet("Leo Tolstoy", "wrote", "Anna Karenina", check_synonyms=True, head_feature="person", tail_feature="book")
+    graph.add_new_triplet("Fyodor Dostoevsky", "wrote", "The Brothers Karamazov", check_synonyms=True, head_feature="person", tail_feature="book")
+    graph.add_new_triplet("Fyodor Dostoevsky", "wrote", "Idiot", check_synonyms=True, head_feature="person", tail_feature="book")
     graph.add_new_triplet("Fyodor Dostoevsky", "wrote", "Crime and Punishment", check_synonyms=True, head_feature="person", tail_feature="book")
     graph.add_new_triplet("Anton Chekhov", "wrote", "The Cherry Orchard", check_synonyms=True, head_feature="person", tail_feature="book")
 

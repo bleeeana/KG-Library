@@ -1,5 +1,5 @@
 from kg_library.common import GraphData, WikidataExtractor
-from kg_library.models import KnowledgeGraphExtractor, EmbeddingPreprocessor
+from kg_library.models import KnowledgeGraphExtractor
 from kg_library.common import data_frame
 from kg_library import Neo4jConnection
 

@@ -36,5 +36,6 @@ bs4 = "^0.0.2"
 sparqlwrapper = "^2.0.0"
 sentence-transformers = "^2.2.0"
 datasets = "^3.5.0"
+stanza = "^1.10.1"
 
 [tool.poetry.dev-dependencies]
