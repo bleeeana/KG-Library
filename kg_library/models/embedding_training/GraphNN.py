@@ -57,7 +57,7 @@ class GraphNN(nn.Module):
         return self.relation_transform(self.relation_embedding(ids.to(self.device)))
 
 class GraphTrainer:
-    def __init__(self, preprocessor, epochs=100, lr=0.01, weight_decay=1e-5, batch_size=64):
+    def __init__(self, preprocessor, epochs=100, lr=0.0002, weight_decay=1e-6, batch_size=64):
         self.preprocessor = preprocessor
         self.device = preprocessor.device
         self.epochs = epochs
