@@ -6,9 +6,11 @@ from torch_geometric.nn import HeteroConv, SAGEConv
 from torch.optim import Adam
 from sklearn.metrics import roc_auc_score
 from kg_library.models import create_dataloader, create_single_batch_dataloader
+from kg_library.models.embedding_training.EmbeddingPreprocessor import EmbeddingPreprocessor
+
 
 class GraphNN(nn.Module):
-    def __init__(self, preprocessor, dimension = 64, output_dimension = 32, num_layers=2, dropout_rate=0.3):
+    def __init__(self, preprocessor, dimension = 64, output_dimension = 32, num_layers=3, dropout_rate=0.3):
         super().__init__()
         self.preprocessor = preprocessor
         self.num_layers = num_layers
@@ -48,7 +50,7 @@ class GraphNN(nn.Module):
         return x_dict
 
     def score_function(self, h_emb, t_emb, r_emb):
-        return torch.sum(h_emb * r_emb * t_emb, dim=1)
+        return -torch.norm(h_emb + r_emb - t_emb, p=2, dim=1)
 
     def get_entity_embedding(self, ids: torch.Tensor):
         return self.entity_embedding(ids.to(self.device))
@@ -57,7 +59,7 @@ class GraphNN(nn.Module):
         return self.relation_transform(self.relation_embedding(ids.to(self.device)))
 
 class GraphTrainer:
-    def __init__(self, preprocessor, epochs=100, lr=0.0002, weight_decay=1e-6, batch_size=64):
+    def __init__(self, preprocessor : EmbeddingPreprocessor, epochs=100, lr=0.0002, weight_decay=1e-6, batch_size=64):
         self.preprocessor = preprocessor
         self.device = preprocessor.device
         self.epochs = epochs
@@ -65,7 +67,7 @@ class GraphTrainer:
         self.model = GraphNN(preprocessor).to(self.device)
         self.optimizer = Adam(self.model.parameters(), lr=lr, weight_decay=weight_decay)
 
-        self.train_loader, self.val_loader, self.test_loader = create_single_batch_dataloader(preprocessor)
+        self.train_loader, self.val_loader, self.test_loader = create_dataloader(preprocessor, batch_size)
 
     def train(self):
         for epoch in range(self.epochs):
@@ -74,7 +76,7 @@ class GraphTrainer:
 
             for batch in self.train_loader:
                 batch = batch.to(self.device)
-                output_dict = self.model(self.preprocessor.hetero_graph)
+                output_dict = self.model(self.preprocessor.create_hetero_from_batch(batch))
 
                 h_batch = batch.head.squeeze()
                 t_batch = batch.tail.squeeze()
@@ -103,15 +105,15 @@ class GraphTrainer:
         all_scores = []
         all_labels = []
 
-        output_dict = self.model(self.preprocessor.hetero_graph)
-
         with torch.no_grad():
             for batch in dataloader:
                 batch = batch.to(self.device)
+                hetero_batch = self.preprocessor.create_hetero_from_batch(batch)
+                output_dict = self.model(hetero_batch)
+
                 h_batch = batch.head.squeeze()
                 t_batch = batch.tail.squeeze()
                 r_batch = batch.edge_attr.squeeze()
-
                 labels_batch = batch.y
 
                 h_emb = output_dict["entity"][h_batch]

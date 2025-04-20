@@ -1,6 +1,8 @@
 import torch
+from torch_geometric.loader import DataLoader
+
 from kg_library.common import GraphData
-from torch_geometric.data import HeteroData
+from torch_geometric.data import HeteroData, Batch
 from sklearn.model_selection import train_test_split
 import numpy as np
 
@@ -14,6 +16,9 @@ class EmbeddingPreprocessor:
         self.hetero_graph = None
         self.split_triplets = None
         self.labels = None
+        self.train_hetero_graph = None
+        self.val_hetero_graph = None
+        self.test_hetero_graph = None
         self.__verify_device()
 
     def __verify_device(self):
@@ -55,22 +60,22 @@ class EmbeddingPreprocessor:
 
     def prepare_training_data(
             self,
-            test_size: float = 0.2,
-            val_size: float = 0.2,
+            test_size,
+            val_size,
             random_state: int = 1
     ) -> None:
         positive_triplets = [
             (self.entity_id[head.name], relation.get_relation(), self.entity_id[tail.name])
             for head, relation, tail in self.graph.triplets
         ]
-        negative_triplets = self._generate_negative_triplets(positive_triplets)
+        negative_triplets = self.__generate_negative_triplets(positive_triplets)
 
         triplets = positive_triplets + negative_triplets
         labels = [1] * len(positive_triplets) + [0] * len(negative_triplets)
 
         self.__split_data(triplets, labels, test_size, val_size, random_state)
 
-    def _generate_negative_triplets(
+    def __generate_negative_triplets(
             self,
             positive_triplets: list
     ) -> list:
@@ -129,7 +134,41 @@ class EmbeddingPreprocessor:
             unique, counts = np.unique(labels, return_counts=True)
             print(f"{name} set class balance: {dict(zip(unique, counts))}")
 
-    def preprocess(self, test_size: float = 0.2, val_size: float = 0.2, random_state: int = 1):
+    def generate_split_hetero_data(self, loader : DataLoader) -> list[HeteroData]:
+        print(loader.dataset)
+        result_hetero_data = []
+        for index, batch in enumerate(loader):
+            batch : Batch.to_data_list
+            result_hetero_data.append(self.create_hetero_from_batch(batch))
+        return result_hetero_data
+
+    @staticmethod
+    def get_unique_ids(head_id, tail_id) -> list[int]:
+        unique_ids = torch.cat([head_id, tail_id]).unique()
+        return unique_ids
+
+    def create_hetero_from_batch(self, batch : Batch.to_data_list) -> HeteroData:
+        head = batch.head
+        tail = batch.tail
+        unique_ids = self.get_unique_ids(head, tail)
+        #print(f"Unique ids: {unique_ids}")
+        feature_matrix = self.feature_matrix[unique_ids]
+        hetero_data = HeteroData()
+        hetero_data["entity"].x = feature_matrix
+        edge_index_dict = {}
+        for i in range(len(head)):
+            h_id = head[i]
+            t_id = tail[i]
+            relation_name = next(key for key, value in self.relation_id.items() if value == batch.edge_attr[i])
+            if ('entity', relation_name, 'entity') not in edge_index_dict:
+                edge_index_dict[('entity', relation_name, 'entity')] = [[], []]
+            edge_index_dict[('entity', relation_name, 'entity')][0].append(h_id)
+            edge_index_dict[('entity', relation_name, 'entity')][1].append(t_id)
+        for relation_tuple, (src, dest) in edge_index_dict.items():
+            hetero_data[relation_tuple].edge_index = torch.tensor([src, dest], dtype=torch.long).to(self.device)
+        return hetero_data
+
+    def preprocess(self, test_size: float = 0.1, val_size: float = 0.2, random_state: int = 1):
         self.build_feature_matrix()
         self.build_hetero_graph()
         self.prepare_training_data(test_size, val_size, random_state)

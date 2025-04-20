@@ -25,14 +25,14 @@ class AppFacade:
             publication_date = self.dataset['Publication date'][i]
             print(publication_date)
             if title != 'None' or author != 'None':
-                self.graph.add_new_triplet(title, "author", author, check_synonyms=True, head_feature="title", tail_feature="author")
+                self.graph.add_new_triplet(title, "author", author, check_synonyms=False, head_feature="title", tail_feature="author")
             if publication_date != 'None':
-                self.graph.add_new_triplet(title, "published_in", publication_date, check_synonyms=True, head_feature="title", tail_feature="date")
+                self.graph.add_new_triplet(title, "published_in", publication_date, check_synonyms=False, head_feature="title", tail_feature="date")
             for genre in genres:
                 if genre == 'None':
-                    self.graph.add_new_triplet(title, "has_genre", genre, check_synonyms=True, head_feature="title", tail_feature="genre")
+                    self.graph.add_new_triplet(title, "has_genre", genre, check_synonyms=False, head_feature="title", tail_feature="genre")
             self.extract_plot_summary(i)
-        #self.graph.add_loop_reversed_triplet()
+        self.graph.add_loop_reversed_triplet()
         self.graph.print()
         self.graph.fill_database(self.neo4j_connection)
 
@@ -58,20 +58,20 @@ class AppFacade:
             self.graph.add_new_triplet(title, "published_in_id", publication_date["id"], check_synonyms=True, head_feature="title", tail_feature="id")
 
         for country in info["countries"]:
-            self.graph.add_new_triplet(title, "place", country["label"], check_synonyms=True, head_feature="title", tail_feature="country")
-            self.graph.add_new_triplet(title, "place_id", country["id"], check_synonyms=True, head_feature="title", tail_feature="id")
+            self.graph.add_new_triplet(title, "place", country["label"], check_synonyms=False, head_feature="title", tail_feature="country")
+            self.graph.add_new_triplet(title, "place_id", country["id"], check_synonyms=False, head_feature="title", tail_feature="id")
 
         for language in info["languages"]:
-            self.graph.add_new_triplet(title, "language", language["label"], check_synonyms=True, head_feature="title", tail_feature="language")
-            self.graph.add_new_triplet(title, "language_id", language["id"], check_synonyms=True, head_feature="title", tail_feature="id")
+            self.graph.add_new_triplet(title, "language", language["label"], check_synonyms=False, head_feature="title", tail_feature="language")
+            self.graph.add_new_triplet(title, "language_id", language["id"], check_synonyms=False, head_feature="title", tail_feature="id")
 
         for character in info["characters"]:
             self.graph.add_new_triplet(title, "character", character["label"], check_synonyms=True, head_feature="title", tail_feature="character")
             self.graph.add_new_triplet(title, "character_id", character["id"], check_synonyms=True, head_feature="title", tail_feature="id")
 
         for location in info["locations"]:
-            self.graph.add_new_triplet(title, "location", location["label"], check_synonyms=True, head_feature="title", tail_feature="location")
-            self.graph.add_new_triplet(title, "location_id", location["id"], check_synonyms=True, head_feature="title", tail_feature="id")
+            self.graph.add_new_triplet(title, "location", location["label"], check_synonyms=False, head_feature="title", tail_feature="location")
+            self.graph.add_new_triplet(title, "location_id", location["id"], check_synonyms=False, head_feature="title", tail_feature="id")
 
     def extract_plot_summary(self, index):
         summary = self.dataset["Summarized Plot Summary"][index]
@@ -79,7 +79,7 @@ class AppFacade:
             extracted_triplets = self.knowledge_graph_extractor.extract_from_text(summary)
             self.knowledge_graph_extractor.print_knowledge_graph()
             for head, relation, tail in extracted_triplets:
-                self.graph.add_new_triplet(head, relation, tail)
+                self.graph.add_new_triplet(head, relation, tail, check_synonyms=True)
 
     def generate_graph(self):
         self.input_base_data()
