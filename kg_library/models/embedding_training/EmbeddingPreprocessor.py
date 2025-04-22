@@ -83,12 +83,12 @@ class EmbeddingPreprocessor:
         positive_set = set(positive_triplets)
         negative_triplets = []
 
-        for head, relation, tail in positive_triplets:
+        for index, (head, relation, tail) in enumerate(positive_triplets):
             possible_heads = [e for e in all_entities if e != head and (e, relation, tail) not in positive_set]
             possible_tails = [e for e in all_entities if e != tail and (head, relation, e) not in positive_set]
-            if possible_heads:
+            if possible_heads and index % 2 == 0:
                 negative_triplets.append((np.random.choice(possible_heads), relation, tail))
-            if possible_tails:
+            if possible_tails and index % 2 == 1:
                 negative_triplets.append((head, relation, np.random.choice(possible_tails)))
         return negative_triplets
 

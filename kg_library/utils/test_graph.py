@@ -1,69 +1,138 @@
 from kg_library.common import GraphData
 
+
 def create_mini_test_graph() -> GraphData:
     graph = GraphData()
 
-    graph.add_new_triplet("Leo Tolstoy", "is_a", "author", check_synonyms=False, head_feature="person", tail_feature="type")
-    graph.add_new_triplet("Fyodor Dostoevsky", "is_a", "author", check_synonyms=False, head_feature="person", tail_feature="type")
-    graph.add_new_triplet("Anton Chekhov", "is_a", "author", check_synonyms=False, head_feature="person", tail_feature="type")
-    graph.add_new_triplet("Alexander Pushkin", "is_a", "author", check_synonyms=False, head_feature="person", tail_feature="type")
+    graph.add_new_triplet("Leo Tolstoy", "is_a", "author", check_synonyms=False, head_feature="person",
+                          tail_feature="type")
+    graph.add_new_triplet("Fyodor Dostoevsky", "is_a", "author", check_synonyms=False, head_feature="person",
+                          tail_feature="type")
+    graph.add_new_triplet("Anton Chekhov", "is_a", "author", check_synonyms=False, head_feature="person",
+                          tail_feature="type")
+    graph.add_new_triplet("Alexander Pushkin", "is_a", "author", check_synonyms=False, head_feature="person",
+                          tail_feature="type")
 
-    graph.add_new_triplet("War and Peace", "is_a", "novel", check_synonyms=False, head_feature="book", tail_feature="type")
-    graph.add_new_triplet("Anna Karenina", "is_a", "novel", check_synonyms=False, head_feature="book", tail_feature="type")
-    graph.add_new_triplet("Crime and Punishment", "is_a", "novel", check_synonyms=False, head_feature="book", tail_feature="type")
-    graph.add_new_triplet("The Cherry Orchard", "is_a", "play", check_synonyms=False, head_feature="book", tail_feature="type")
-    graph.add_new_triplet("Eugene Onegin", "is_a", "poem", check_synonyms=False, head_feature="book", tail_feature="type")
+    graph.add_new_triplet("War and Peace", "is_a", "novel", check_synonyms=False, head_feature="book",
+                          tail_feature="type")
+    graph.add_new_triplet("Anna Karenina", "is_a", "novel", check_synonyms=False, head_feature="book",
+                          tail_feature="type")
+    graph.add_new_triplet("Crime and Punishment", "is_a", "novel", check_synonyms=False, head_feature="book",
+                          tail_feature="type")
+    graph.add_new_triplet("The Cherry Orchard", "is_a", "play", check_synonyms=False, head_feature="book",
+                          tail_feature="type")
+    graph.add_new_triplet("Eugene Onegin", "is_a", "poem", check_synonyms=False, head_feature="book",
+                          tail_feature="type")
 
-    graph.add_new_triplet("Leo Tolstoy", "wrote", "War and Peace", check_synonyms=False, head_feature="person", tail_feature="book")
-    graph.add_new_triplet("Leo Tolstoy", "wrote", "Anna Karenina", check_synonyms=False, head_feature="person", tail_feature="book")
-    graph.add_new_triplet("Fyodor Dostoevsky", "wrote", "Crime and Punishment", check_synonyms=False, head_feature="person", tail_feature="book")
-    graph.add_new_triplet("Anton Chekhov", "wrote", "The Cherry Orchard", check_synonyms=False, head_feature="person", tail_feature="book")
-    graph.add_new_triplet("Alexander Pushkin", "wrote", "Eugene Onegin", check_synonyms=False, head_feature="person", tail_feature="book")
+    graph.add_new_triplet("Leo Tolstoy", "wrote", "War and Peace", check_synonyms=False, head_feature="person",
+                          tail_feature="book")
+    graph.add_new_triplet("Leo Tolstoy", "wrote", "Anna Karenina", check_synonyms=False, head_feature="person",
+                          tail_feature="book")
+    graph.add_new_triplet("Fyodor Dostoevsky", "wrote", "Crime and Punishment", check_synonyms=False,
+                          head_feature="person", tail_feature="book")
+    graph.add_new_triplet("Anton Chekhov", "wrote", "The Cherry Orchard", check_synonyms=False, head_feature="person",
+                          tail_feature="book")
+    graph.add_new_triplet("Alexander Pushkin", "wrote", "Eugene Onegin", check_synonyms=False, head_feature="person",
+                          tail_feature="book")
 
-    graph.add_new_triplet("Pierre Bezukhov", "is_a", "character", check_synonyms=False, head_feature="character", tail_feature="type")
-    graph.add_new_triplet("Anna Karenina", "is_a", "character", check_synonyms=False, head_feature="character", tail_feature="type")
-    graph.add_new_triplet("Raskolnikov", "is_a", "character", check_synonyms=False, head_feature="character", tail_feature="type")
-    graph.add_new_triplet("Ranevskaya", "is_a", "character", check_synonyms=False, head_feature="character", tail_feature="type")
-    graph.add_new_triplet("Eugene Onegin", "is_a", "character", check_synonyms=False, head_feature="character", tail_feature="type")
-    graph.add_new_triplet("Tatyana Larina", "is_a", "character", check_synonyms=False, head_feature="character", tail_feature="type")
+    graph.add_new_triplet("Pierre Bezukhov", "is_a", "character", check_synonyms=False, head_feature="character",
+                          tail_feature="type")
+    graph.add_new_triplet("Anna Karenina", "is_a", "character", check_synonyms=False, head_feature="character",
+                          tail_feature="type")
+    graph.add_new_triplet("Raskolnikov", "is_a", "character", check_synonyms=False, head_feature="character",
+                          tail_feature="type")
+    graph.add_new_triplet("Ranevskaya", "is_a", "character", check_synonyms=False, head_feature="character",
+                          tail_feature="type")
+    graph.add_new_triplet("Eugene Onegin", "is_a", "character", check_synonyms=False, head_feature="character",
+                          tail_feature="type")
+    graph.add_new_triplet("Tatyana Larina", "is_a", "character", check_synonyms=False, head_feature="character",
+                          tail_feature="type")
 
-    graph.add_new_triplet("Pierre Bezukhov", "appears_in", "War and Peace", check_synonyms=False, head_feature="character", tail_feature="book")
-    graph.add_new_triplet("Anna Karenina", "appears_in", "Anna Karenina", check_synonyms=False, head_feature="character", tail_feature="book")
-    graph.add_new_triplet("Raskolnikov", "appears_in", "Crime and Punishment", check_synonyms=False, head_feature="character", tail_feature="book")
-    graph.add_new_triplet("Ranevskaya", "appears_in", "The Cherry Orchard", check_synonyms=False, head_feature="character", tail_feature="book")
-    graph.add_new_triplet("Eugene Onegin", "appears_in", "Eugene Onegin", check_synonyms=False, head_feature="character", tail_feature="book")
-    graph.add_new_triplet("Tatyana Larina", "appears_in", "Eugene Onegin", check_synonyms=False, head_feature="character", tail_feature="book")
+    graph.add_new_triplet("Pierre Bezukhov", "appears_in", "War and Peace", check_synonyms=False,
+                          head_feature="character", tail_feature="book")
+    graph.add_new_triplet("Anna Karenina", "appears_in", "Anna Karenina", check_synonyms=False,
+                          head_feature="character", tail_feature="book")
+    graph.add_new_triplet("Raskolnikov", "appears_in", "Crime and Punishment", check_synonyms=False,
+                          head_feature="character", tail_feature="book")
+    graph.add_new_triplet("Ranevskaya", "appears_in", "The Cherry Orchard", check_synonyms=False,
+                          head_feature="character", tail_feature="book")
+    graph.add_new_triplet("Eugene Onegin", "appears_in", "Eugene Onegin", check_synonyms=False,
+                          head_feature="character", tail_feature="book")
+    graph.add_new_triplet("Tatyana Larina", "appears_in", "Eugene Onegin", check_synonyms=False,
+                          head_feature="character", tail_feature="book")
 
-    graph.add_new_triplet("Leo Tolstoy", "influenced", "Anton Chekhov", check_synonyms=False, head_feature="person", tail_feature="person")
-    graph.add_new_triplet("Fyodor Dostoevsky", "influenced", "Leo Tolstoy", check_synonyms=False, head_feature="person", tail_feature="person")
-    graph.add_new_triplet("Alexander Pushkin", "influenced", "Leo Tolstoy", check_synonyms=False, head_feature="person", tail_feature="person")
+    graph.add_new_triplet("Leo Tolstoy", "influenced", "Anton Chekhov", check_synonyms=False, head_feature="person",
+                          tail_feature="person")
+    graph.add_new_triplet("Fyodor Dostoevsky", "influenced", "Leo Tolstoy", check_synonyms=False, head_feature="person",
+                          tail_feature="person")
+    graph.add_new_triplet("Alexander Pushkin", "influenced", "Leo Tolstoy", check_synonyms=False, head_feature="person",
+                          tail_feature="person")
 
-    graph.add_new_triplet("War and Peace", "belongs_to_genre", "realism", check_synonyms=False, head_feature="book", tail_feature="genre")
-    graph.add_new_triplet("Anna Karenina", "belongs_to_genre", "realism", check_synonyms=False, head_feature="book", tail_feature="genre")
-    graph.add_new_triplet("Crime and Punishment", "belongs_to_genre", "psychological_fiction", check_synonyms=False, head_feature="book", tail_feature="genre")
-    graph.add_new_triplet("The Cherry Orchard", "belongs_to_genre", "drama", check_synonyms=False, head_feature="book", tail_feature="genre")
-    graph.add_new_triplet("Eugene Onegin", "belongs_to_genre", "poetry", check_synonyms=False, head_feature="book", tail_feature="genre")
+    graph.add_new_triplet("War and Peace", "belongs_to_genre", "realism", check_synonyms=False, head_feature="book",
+                          tail_feature="genre")
+    graph.add_new_triplet("Anna Karenina", "belongs_to_genre", "realism", check_synonyms=False, head_feature="book",
+                          tail_feature="genre")
+    graph.add_new_triplet("Crime and Punishment", "belongs_to_genre", "psychological_fiction", check_synonyms=False,
+                          head_feature="book", tail_feature="genre")
+    graph.add_new_triplet("The Cherry Orchard", "belongs_to_genre", "drama", check_synonyms=False, head_feature="book",
+                          tail_feature="genre")
+    graph.add_new_triplet("Eugene Onegin", "belongs_to_genre", "poetry", check_synonyms=False, head_feature="book",
+                          tail_feature="genre")
 
-    graph.add_new_triplet("Leo Tolstoy", "lived_during", "19th_century", check_synonyms=False, head_feature="person", tail_feature="time_period")
-    graph.add_new_triplet("Fyodor Dostoevsky", "lived_during", "19th_century", check_synonyms=False, head_feature="person", tail_feature="time_period")
-    graph.add_new_triplet("Anton Chekhov", "lived_during", "19th_century", check_synonyms=False, head_feature="person", tail_feature="time_period")
-    graph.add_new_triplet("Alexander Pushkin", "lived_during", "19th_century", check_synonyms=False, head_feature="person", tail_feature="time_period")
+    graph.add_new_triplet("Leo Tolstoy", "lived_during", "19th_century", check_synonyms=False, head_feature="person",
+                          tail_feature="time_period")
+    graph.add_new_triplet("Fyodor Dostoevsky", "lived_during", "19th_century", check_synonyms=False,
+                          head_feature="person", tail_feature="time_period")
+    graph.add_new_triplet("Anton Chekhov", "lived_during", "19th_century", check_synonyms=False, head_feature="person",
+                          tail_feature="time_period")
+    graph.add_new_triplet("Alexander Pushkin", "lived_during", "19th_century", check_synonyms=False,
+                          head_feature="person", tail_feature="time_period")
 
-    graph.add_new_triplet("Leo Tolstoy", "has_nationality", "Russian", check_synonyms=False, head_feature="person", tail_feature="nationality")
-    graph.add_new_triplet("Fyodor Dostoevsky", "has_nationality", "Russian", check_synonyms=False, head_feature="person", tail_feature="nationality")
-    graph.add_new_triplet("Anton Chekhov", "has_nationality", "Russian", check_synonyms=False, head_feature="person", tail_feature="nationality")
-    graph.add_new_triplet("Alexander Pushkin", "has_nationality", "Russian", check_synonyms=False, head_feature="person", tail_feature="nationality")
+    graph.add_new_triplet("Leo Tolstoy", "has_nationality", "Russian", check_synonyms=False, head_feature="person",
+                          tail_feature="nationality")
+    graph.add_new_triplet("Fyodor Dostoevsky", "has_nationality", "Russian", check_synonyms=False,
+                          head_feature="person", tail_feature="nationality")
+    graph.add_new_triplet("Anton Chekhov", "has_nationality", "Russian", check_synonyms=False, head_feature="person",
+                          tail_feature="nationality")
+    graph.add_new_triplet("Alexander Pushkin", "has_nationality", "Russian", check_synonyms=False,
+                          head_feature="person", tail_feature="nationality")
 
-    graph.add_new_triplet("War and Peace", "published_in", "1869", check_synonyms=False, head_feature="book", tail_feature="year")
-    graph.add_new_triplet("Anna Karenina", "published_in", "1877", check_synonyms=False, head_feature="book", tail_feature="year")
-    graph.add_new_triplet("Crime and Punishment", "published_in", "1866", check_synonyms=False, head_feature="book", tail_feature="year")
-    graph.add_new_triplet("The Cherry Orchard", "published_in", "1904", check_synonyms=False, head_feature="book", tail_feature="year")
-    graph.add_new_triplet("Eugene Onegin", "published_in", "1833", check_synonyms=False, head_feature="book", tail_feature="year")
+    graph.add_new_triplet("War and Peace", "published_in", "1869", check_synonyms=False, head_feature="book",
+                          tail_feature="year")
+    graph.add_new_triplet("Anna Karenina", "published_in", "1877", check_synonyms=False, head_feature="book",
+                          tail_feature="year")
+    graph.add_new_triplet("Crime and Punishment", "published_in", "1866", check_synonyms=False, head_feature="book",
+                          tail_feature="year")
+    graph.add_new_triplet("The Cherry Orchard", "published_in", "1904", check_synonyms=False, head_feature="book",
+                          tail_feature="year")
+    graph.add_new_triplet("Eugene Onegin", "published_in", "1833", check_synonyms=False, head_feature="book",
+                          tail_feature="year")
 
-    graph.add_new_triplet("Pierre Bezukhov", "friend_of", "Natasha Rostova", check_synonyms=False, head_feature="character", tail_feature="character")
-    graph.add_new_triplet("Eugene Onegin", "rejected", "Tatyana Larina", check_synonyms=False, head_feature="character", tail_feature="character")
-    
+    graph.add_new_triplet("Pierre Bezukhov", "friend_of", "Natasha Rostova", check_synonyms=False,
+                          head_feature="character", tail_feature="character")
+    graph.add_new_triplet("Eugene Onegin", "rejected", "Tatyana Larina", check_synonyms=False, head_feature="character",
+                          tail_feature="character")
+
+    graph.add_new_triplet("Nina Berberova", "is_a", "author", check_synonyms=False, head_feature="person", tail_feature="type")
+    graph.add_new_triplet("Nina Berberova", "lived_during", "20th_century", check_synonyms=False, head_feature="person", tail_feature="time_period")
+    graph.add_new_triplet("Nina Berberova", "wrote", "The Accompanist", check_synonyms=False, head_feature="person", tail_feature="book")
+    graph.add_new_triplet("The Accompanist", "is_a", "novel", check_synonyms=False, head_feature="book", tail_feature="type")
+    graph.add_new_triplet("The Accompanist", "belongs_to_genre", "realism", check_synonyms=False, head_feature="book", tail_feature="genre")
+    graph.add_new_triplet("The Accompanist", "set_in", "Saint_Petersburg", check_synonyms=False, head_feature="book", tail_feature="location")
+
+    graph.add_new_triplet("Vera", "is_a", "character", check_synonyms=False, head_feature="character", tail_feature="type")
+    graph.add_new_triplet("Vera", "appears_in", "The Accompanist", check_synonyms=False, head_feature="character", tail_feature="book")
+    graph.add_new_triplet("Vera", "loves", "Sofya", check_synonyms=False, head_feature="character", tail_feature="character")
+    graph.add_new_triplet("Sofya", "is_a", "character", check_synonyms=False, head_feature="character", tail_feature="type")
+    graph.add_new_triplet("Sofya", "appears_in", "The Accompanist", check_synonyms=False, head_feature="character", tail_feature="book")
+
+    graph.add_new_triplet("Vera", "inspired_by", "Anna Karenina", check_synonyms=False, head_feature="character", tail_feature="character")
+    graph.add_new_triplet("Nina Berberova", "influenced", "Lyudmila Ulitskaya", check_synonyms=False, head_feature="person", tail_feature="person")
+    graph.add_new_triplet("The Accompanist", "referenced_by", "Sonechka", check_synonyms=False, head_feature="book", tail_feature="book")
+    graph.add_new_triplet("Nina Berberova", "lived_in", "Saint_Petersburg", check_synonyms=False, head_feature="person", tail_feature="location")
+
     return graph
+
 
 def create_test_graph() -> GraphData:
     graph = GraphData()
@@ -847,7 +916,104 @@ def create_test_graph() -> GraphData:
     graph.add_new_triplet("Viktor Pelevin", "lived_in", "Moscow", check_synonyms=False, head_feature="person",
                           tail_feature="location")
 
+    graph.add_new_triplet("Boris Pasternak", "is_a", "author", check_synonyms=False, head_feature="person",
+                          tail_feature="type")
+    graph.add_new_triplet("Vladimir Mayakovsky", "is_a", "author", check_synonyms=False, head_feature="person",
+                          tail_feature="type")
+    graph.add_new_triplet("Doctor Zhivago", "is_a", "novel", check_synonyms=False, head_feature="book",
+                          tail_feature="type")
+    graph.add_new_triplet("Cloud in Pants", "is_a", "poem", check_synonyms=False, head_feature="book",
+                          tail_feature="type")
+    graph.add_new_triplet("Boris Pasternak", "wrote", "Doctor Zhivago", check_synonyms=False, head_feature="person",
+                          tail_feature="book")
+    graph.add_new_triplet("Vladimir Mayakovsky", "wrote", "Cloud in Pants", check_synonyms=False, head_feature="person",
+                          tail_feature="book")
+    graph.add_new_triplet("Doctor Zhivago", "has_character", "Yuri Zhivago", check_synonyms=False, head_feature="book",
+                          tail_feature="character")
+    graph.add_new_triplet("Cloud in Pants", "has_character", "Vladimir", check_synonyms=False, head_feature="book",
+                          tail_feature="character")
+    graph.add_new_triplet("Yuri Zhivago", "is_a", "character", check_synonyms=False, head_feature="character",
+                          tail_feature="type")
+    graph.add_new_triplet("Vladimir", "is_a", "character", check_synonyms=False, head_feature="character",
+                          tail_feature="type")
+    graph.add_new_triplet("Boris Pasternak", "inspired_by", "Leo Tolstoy", check_synonyms=False, head_feature="person",
+                          tail_feature="person")
+    graph.add_new_triplet("Vladimir Mayakovsky", "admired", "Anton Chekhov", check_synonyms=False,
+                          head_feature="person", tail_feature="person")
+    graph.add_new_triplet("Doctor Zhivago", "referenced_by", "War and Peace", check_synonyms=False, head_feature="book",
+                          tail_feature="book")
+    graph.add_new_triplet("Cloud in Pants", "referenced_by", "Eugene Onegin", check_synonyms=False, head_feature="book",
+                          tail_feature="book")
+
+    graph.add_new_triplet("Sergey Dovlatov", "is_a", "author", check_synonyms=False, head_feature="person",
+                          tail_feature="type")
+    graph.add_new_triplet("Lyudmila Ulitskaya", "is_a", "author", check_synonyms=False, head_feature="person",
+                          tail_feature="type")
+    graph.add_new_triplet("Daniil Kharms", "is_a", "author", check_synonyms=False, head_feature="person",
+                          tail_feature="type")
+    graph.add_new_triplet("Ivan Bunin", "is_a", "author", check_synonyms=False, head_feature="person",
+                          tail_feature="type")
+    graph.add_new_triplet("Varlam Shalamov", "is_a", "author", check_synonyms=False, head_feature="person",
+                          tail_feature="type")
+    graph.add_new_triplet("The Suitcase", "is_a", "novel", check_synonyms=False, head_feature="book",
+                          tail_feature="type")
+    graph.add_new_triplet("Sonechka", "is_a", "novel", check_synonyms=False, head_feature="book", tail_feature="type")
+    graph.add_new_triplet("Today I Wrote Nothing", "is_a", "short_story", check_synonyms=False, head_feature="book",
+                          tail_feature="type")
+    graph.add_new_triplet("Dark Avenues", "is_a", "novel", check_synonyms=False, head_feature="book",
+                          tail_feature="type")
+    graph.add_new_triplet("Kolyma Tales", "is_a", "novel", check_synonyms=False, head_feature="book",
+                          tail_feature="type")
+    graph.add_new_triplet("Sergey Dovlatov", "wrote", "The Suitcase", check_synonyms=False, head_feature="person",
+                          tail_feature="book")
+    graph.add_new_triplet("Lyudmila Ulitskaya", "wrote", "Sonechka", check_synonyms=False, head_feature="person",
+                          tail_feature="book")
+    graph.add_new_triplet("Daniil Kharms", "wrote", "Today I Wrote Nothing", check_synonyms=False,
+                          head_feature="person", tail_feature="book")
+    graph.add_new_triplet("Ivan Bunin", "wrote", "Dark Avenues", check_synonyms=False, head_feature="person",
+                          tail_feature="book")
+    graph.add_new_triplet("Varlam Shalamov", "wrote", "Kolyma Tales", check_synonyms=False, head_feature="person",
+                          tail_feature="book")
+    graph.add_new_triplet("Sonechka", "has_character", "Sonia", check_synonyms=False, head_feature="book",
+                          tail_feature="character")
+    graph.add_new_triplet("Kolyma Tales", "has_character", "Prisoner", check_synonyms=False, head_feature="book",
+                          tail_feature="character")
+    graph.add_new_triplet("Dark Avenues", "has_character", "Nikolai", check_synonyms=False, head_feature="book",
+                          tail_feature="character")
+    graph.add_new_triplet("Sonia", "is_a", "character", check_synonyms=False, head_feature="character",
+                          tail_feature="type")
+    graph.add_new_triplet("Prisoner", "is_a", "character", check_synonyms=False, head_feature="character",
+                          tail_feature="type")
+    graph.add_new_triplet("Nikolai", "is_a", "character", check_synonyms=False, head_feature="character",
+                          tail_feature="type")
+    graph.add_new_triplet("Sergey Dovlatov", "admired", "Vladimir Nabokov", check_synonyms=False, head_feature="person",
+                          tail_feature="person")
+    graph.add_new_triplet("Lyudmila Ulitskaya", "inspired_by", "Leo Tolstoy", check_synonyms=False,
+                          head_feature="person", tail_feature="person")
+    graph.add_new_triplet("Daniil Kharms", "admired", "Anton Chekhov", check_synonyms=False, head_feature="person",
+                          tail_feature="person")
+    graph.add_new_triplet("Ivan Bunin", "inspired_by", "Ivan Turgenev", check_synonyms=False, head_feature="person",
+                          tail_feature="person")
+    graph.add_new_triplet("Varlam Shalamov", "admired", "Fyodor Dostoevsky", check_synonyms=False,
+                          head_feature="person", tail_feature="person")
+    graph.add_new_triplet("The Suitcase", "referenced_by", "Dead Souls", check_synonyms=False, head_feature="book",
+                          tail_feature="book")
+    graph.add_new_triplet("Sonechka", "referenced_by", "Anna Karenina", check_synonyms=False, head_feature="book",
+                          tail_feature="book")
+    graph.add_new_triplet("Today I Wrote Nothing", "referenced_by", "The Seagull", check_synonyms=False,
+                          head_feature="book", tail_feature="book")
+    graph.add_new_triplet("Dark Avenues", "referenced_by", "Lolita", check_synonyms=False, head_feature="book",
+                          tail_feature="book")
+    graph.add_new_triplet("Kolyma Tales", "referenced_by", "Crime and Punishment", check_synonyms=False,
+                          head_feature="book", tail_feature="book")
+    graph.add_new_triplet("Sonia", "inspired_by", "Anna Karenina", check_synonyms=False, head_feature="character",
+                          tail_feature="character")
+    graph.add_new_triplet("Prisoner", "inspired_by", "Pierre Bezukhov", check_synonyms=False, head_feature="character",
+                          tail_feature="character")
+    graph.add_new_triplet("Nikolai", "admired", "Vladimir", check_synonyms=False, head_feature="character",
+                          tail_feature="character")
+
     graph.add_loop_reversed_triplet()
-    graph.print()
+    #graph.print()
 
     return graph
