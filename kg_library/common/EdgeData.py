@@ -3,8 +3,6 @@ from kg_library.common import NodeData
 class EdgeData:
     def __init__(self, relation : str):
         self.__relation = relation
-        self.__embedding = None
-        self.weight = 0
         self.subject = None
         self.object = None
 

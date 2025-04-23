@@ -84,8 +84,8 @@ class EmbeddingPreprocessor:
         negative_triplets = []
 
         for index, (head, relation, tail) in enumerate(positive_triplets):
-            possible_heads = [e for e in all_entities if e != head and (e, relation, tail) not in positive_set]
-            possible_tails = [e for e in all_entities if e != tail and (head, relation, e) not in positive_set]
+            possible_heads = [e for e in all_entities if e != head and (e, relation, tail) not in positive_set and self.graph.nodes[e].feature != self.graph.nodes[head].feature]
+            possible_tails = [e for e in all_entities if e != tail and (head, relation, e) not in positive_set and self.graph.nodes[e].feature != self.graph.nodes[tail].feature]
             if possible_heads and index % 2 == 0:
                 negative_triplets.append((np.random.choice(possible_heads), relation, tail))
             if possible_tails and index % 2 == 1:
@@ -168,7 +168,7 @@ class EmbeddingPreprocessor:
             hetero_data[relation_tuple].edge_index = torch.tensor([src, dest], dtype=torch.long).to(self.device)
         return hetero_data
 
-    def preprocess(self, test_size: float = 0.1, val_size: float = 0.2, random_state: int = 1):
+    def preprocess(self, test_size: float = 0.001, val_size: float = 0.199, random_state: int = 1):
         self.build_feature_matrix()
         self.build_hetero_graph()
         self.prepare_training_data(test_size, val_size, random_state)

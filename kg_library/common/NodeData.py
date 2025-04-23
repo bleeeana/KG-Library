@@ -1,6 +1,6 @@
 from kg_library.common import EdgeData
 class NodeData:
-    def __init__(self, name, input_relation : EdgeData = None, output_relation : EdgeData = None, feature : str = None):
+    def __init__(self, name, input_relation : EdgeData = None, output_relation : EdgeData = None, feature : str = "__default__"):
         self.__input_relations = []
         self.__output_relations = []
         self.name = name
