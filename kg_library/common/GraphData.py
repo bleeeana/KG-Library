@@ -50,16 +50,7 @@ class GraphData:
             self.triplets.append((node, loop_edge, node))
 
     def __check_for_synonyms(self, new_triplet : tuple[str, str, str]) -> bool:
-        head, relation, tail = new_triplet
-        new_embedding = self.__synonymic_model.encode(f"{head} {relation} {tail}")
-        for existing_triplet in self.triplets:
-            existing_head, existing_relation, existing_tail = existing_triplet
-            existing_embedding = self.__synonymic_model.encode(f"{existing_head.name} {existing_relation.get_relation()} {existing_tail.name}")
-            embedding_similarity = util.cos_sim(new_embedding, existing_embedding)
-            #print(f"Existing triplet: {existing_triplet}", f"New triplet: {new_triplet}")
-            #print(f"Embedding similarity: {embedding_similarity}")
-            if embedding_similarity > 0.75:
-                return True
+        # Заглушка
         return False
 
     def add_new_triplet(self, head : str, relation : str, tail : str, check_synonyms : bool = True, head_feature : str = None, tail_feature : str = None) -> None:

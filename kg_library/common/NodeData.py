@@ -9,7 +9,6 @@ class NodeData:
             self.add_input(input_relation)
         if output_relation is not None:
             self.add_output(output_relation)
-        self.__embedding = None
 
     def add_input(self, edge : EdgeData):
         self.__input_relations.append(edge)

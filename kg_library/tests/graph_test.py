@@ -1,5 +1,6 @@
 import unittest
-from kg_library.common import GraphData, NodeData
+from kg_library.common import GraphData, NodeData, GraphJSON
+from kg_library import AppFacade
 
 class TestGraphData(unittest.TestCase):
     def test_init(self):
@@ -45,6 +46,16 @@ class TestGraphData(unittest.TestCase):
         graph.add_new_triplet("Node 1", "character", "Node 2")
         graph.add_new_triplet("Node 1", "characters", "Node 2")
         self.assertEqual(len(graph.edges), 1)
+
+    def test_save_to_json(self):
+        graph = GraphData()
+        app_facade = AppFacade()
+        app_facade.generate_graph()
+        GraphJSON.save(graph, "test.json")
+        loaded_graph = GraphJSON.load("test.json")
+        self.assertEqual(len(graph.nodes), len(loaded_graph.nodes))
+        self.assertEqual(len(graph.edges), len(loaded_graph.edges))
+        self.assertEqual(len(graph.triplets), len(loaded_graph.triplets))
 
 if __name__ == '__main__':
     unittest.main()
