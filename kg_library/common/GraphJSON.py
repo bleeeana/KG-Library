@@ -7,18 +7,11 @@ class NodeJSON:
         return {
             "name" : node.name,
             "feature" : node.feature,
-            "input_relations" : [EdgeJSON.to_json(edge) for edge in node.get_inputs()],
-            "output_relations" : [EdgeJSON.to_json(edge) for edge in node.get_outputs()]
         }
 
     @staticmethod
     def from_json(node_dict : dict) -> NodeData:
-        node = NodeData(node_dict["name"], feature=node_dict["feature"])
-        for edge in node_dict["input_relations"]:
-            node.add_input(EdgeJSON.from_json(edge))
-        for edge in node_dict["output_relations"]:
-            node.add_output(EdgeJSON.from_json(edge))
-        return node
+        return NodeData(node_dict["name"], feature=node_dict["feature"])
 
 
 class EdgeJSON:
@@ -26,13 +19,11 @@ class EdgeJSON:
     def to_json(edge : EdgeData) -> dict:
         return {
             "relation" : edge.get_relation(),
-            "subject" : NodeJSON.to_json(edge.subject),
-            "object" : NodeJSON.to_json(edge.object)
         }
 
     @staticmethod
     def from_json(edge_dict : dict) -> EdgeData:
-        return EdgeData(edge_dict["relation"]).set_ends(NodeJSON.from_json(edge_dict["subject"]), NodeJSON.from_json(edge_dict["object"]))
+        return EdgeData(edge_dict["relation"])
 
 class GraphJSON:
     @staticmethod
@@ -46,7 +37,7 @@ class GraphJSON:
             dict["triplets"].append({
                 "head" : graph.nodes.index(triplet[0]),
                 "relation" : graph.edges.index(triplet[1]),
-                "tail" : graph.edges.index(triplet[1])
+                "tail" : graph.nodes.index(triplet[2])
             })
         return json.dumps(dict, indent=2)
 
@@ -62,6 +53,9 @@ class GraphJSON:
             head = graph.nodes[triplet_dict["head"]]
             relation = graph.edges[triplet_dict["relation"]]
             tail = graph.nodes[triplet_dict["tail"]]
+            head.add_output(relation)
+            tail.add_input(relation)
+            relation.set_ends(head, tail)
             graph.triplets.append((head, relation, tail))
         return graph
 

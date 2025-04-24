@@ -53,7 +53,7 @@ class GraphData:
         # Заглушка
         return False
 
-    def add_new_triplet(self, head : str, relation : str, tail : str, check_synonyms : bool = True, head_feature : str = None, tail_feature : str = None) -> None:
+    def add_new_triplet(self, head : str, relation : str, tail : str, check_synonyms : bool = True, head_feature : str = "default", tail_feature : str = "default") -> None:
         #print(f"Adding new triplet: {head}({head_feature}) -> {relation} -> {tail}({tail_feature}), check synonyms: {check_synonyms}")
         if check_synonyms:
             if self.__check_for_synonyms((head, relation, tail)):
@@ -67,14 +67,14 @@ class GraphData:
         tail_node.add_input(relation_edge)
         self.triplets.append((head_node, relation_edge, tail_node))
 
-    def __find_or_create_node(self, name : str, feature : str = None) -> NodeData:
+    def __find_or_create_node(self, name : str, feature : str = "default") -> NodeData:
         if self.find_node(name) is None:
             node = NodeData(name, feature=feature)
             self.add_node(node)
             return node
         else:
             node = self.find_node(name)
-            if node.feature is None and feature is not None:
+            if node.feature == "default" and feature != "default":
                 print(f"Setting feature for node {name} to {feature} from {node.feature}")
                 node.feature = feature
             return node
