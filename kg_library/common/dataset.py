@@ -1,14 +1,12 @@
 import pandas as pd
 import os
 from datasets import load_dataset
+from kg_library import get_config
 
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
-
-cache_path = os.path.join(project_root, "cache/datasets")
 
 literature_dataset = load_dataset(
     "kingkangkr/book_summary_dataset",
-    cache_dir=cache_path
+    cache_dir=get_config()['dataset_cache_path']
 )
 
 data_frame = pd.DataFrame(literature_dataset['train'])

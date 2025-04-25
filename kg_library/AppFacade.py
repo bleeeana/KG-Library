@@ -11,7 +11,7 @@ class AppFacade:
         self.base_information_extractor = WikidataExtractor()
         self.graph = GraphData()
         self.dataset = data_frame
-        self.size = 200
+        self.size = 250
 
     def input_base_data(self):
         for i in range(self.size):
@@ -32,8 +32,7 @@ class AppFacade:
                 self.graph.add_new_triplet(title, "published_in", publication_date, check_synonyms=False,
                                            head_feature="title", tail_feature="date")
             for genre in genres:
-                if genre == 'None':
-                    self.graph.add_new_triplet(title, "has_genre", genre, check_synonyms=False, head_feature="title",
+                self.graph.add_new_triplet(title, "has_genre", genre, check_synonyms=False, head_feature="title",
                                                tail_feature="genre")
             self.extract_plot_summary(i)
         self.graph.add_loop_reversed_triplet()
@@ -55,38 +54,38 @@ class AppFacade:
         for author in info["authors"]:
             self.graph.add_new_triplet(title, "author", author["label"], check_synonyms=True, head_feature="title",
                                        tail_feature="person")
-            self.graph.add_new_triplet(title, "author_id", author["id"], check_synonyms=True, head_feature="title",
-                                       tail_feature="id")
+            #self.graph.add_new_triplet(title, "author_id", author["id"], check_synonyms=True, head_feature="title",
+            #                           tail_feature="id")
 
         for publication_date in info["publication_dates"]:
             self.graph.add_new_triplet(title, "published_in", publication_date["label"], check_synonyms=True,
                                        head_feature="title", tail_feature="date")
-            self.graph.add_new_triplet(title, "published_in_id", publication_date["id"], check_synonyms=True,
-                                       head_feature="title", tail_feature="id")
+            #self.graph.add_new_triplet(title, "published_in_id", publication_date["id"], check_synonyms=True,
+            #                           head_feature="title", tail_feature="id")
 
         for country in info["countries"]:
             self.graph.add_new_triplet(title, "place", country["label"], check_synonyms=False, head_feature="title",
                                        tail_feature="country")
-            self.graph.add_new_triplet(title, "place_id", country["id"], check_synonyms=False, head_feature="title",
-                                       tail_feature="id")
+            #self.graph.add_new_triplet(title, "place_id", country["id"], check_synonyms=False, head_feature="title",
+            #                           tail_feature="id")
 
         for language in info["languages"]:
             self.graph.add_new_triplet(title, "language", language["label"], check_synonyms=False, head_feature="title",
                                        tail_feature="language")
-            self.graph.add_new_triplet(title, "language_id", language["id"], check_synonyms=False, head_feature="title",
-                                       tail_feature="id")
+            #self.graph.add_new_triplet(title, "language_id", language["id"], check_synonyms=False, head_feature="title",
+            #                           tail_feature="id")
 
         for character in info["characters"]:
             self.graph.add_new_triplet(title, "character", character["label"], check_synonyms=True,
                                        head_feature="title", tail_feature="character")
-            self.graph.add_new_triplet(title, "character_id", character["id"], check_synonyms=True,
-                                       head_feature="title", tail_feature="id")
+            #self.graph.add_new_triplet(title, "character_id", character["id"], check_synonyms=True,
+            #                          head_feature="title", tail_feature="id")
 
         for location in info["locations"]:
             self.graph.add_new_triplet(title, "location", location["label"], check_synonyms=False, head_feature="title",
                                        tail_feature="location")
-            self.graph.add_new_triplet(title, "location_id", location["id"], check_synonyms=False, head_feature="title",
-                                       tail_feature="id")
+            #self.graph.add_new_triplet(title, "location_id", location["id"], check_synonyms=False, head_feature="title",
+            #                           tail_feature="id")
 
     def extract_plot_summary(self, index):
         summary = self.dataset["Summarized Plot Summary"][index]

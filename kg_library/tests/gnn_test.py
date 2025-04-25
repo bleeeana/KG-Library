@@ -5,6 +5,8 @@ from kg_library.models import EmbeddingPreprocessor
 from kg_library.models import GraphTrainer, GraphNN, create_dataloader
 from kg_library.utils import create_test_graph
 
+import torch
+
 class GNNTest(unittest.TestCase):
     def test_train(self):
         graph = create_test_graph()
@@ -35,7 +37,7 @@ class GNNTest(unittest.TestCase):
         print(f"entity id: {preprocessor.entity_id}")
         print(f"relation id: {preprocessor.relation_id}")
 
-        trainer = GraphTrainer(model, train_loader, val_loader, epochs=10000, lr=0.0005)
+        trainer = GraphTrainer(model, train_loader, val_loader, epochs=15, lr=0.0005)
 
         trainer.train()
         val_auc = trainer.evaluate(trainer.val_loader)

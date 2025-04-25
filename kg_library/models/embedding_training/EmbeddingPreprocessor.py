@@ -16,9 +16,6 @@ class EmbeddingPreprocessor:
         self.hetero_graph = None
         self.split_triplets = None
         self.labels = None
-        self.train_hetero_graph = None
-        self.val_hetero_graph = None
-        self.test_hetero_graph = None
         self.__verify_device()
 
     def __verify_device(self):
@@ -168,7 +165,25 @@ class EmbeddingPreprocessor:
             hetero_data[relation_tuple].edge_index = torch.tensor([src, dest], dtype=torch.long).to(self.device)
         return hetero_data
 
-    def preprocess(self, test_size: float = 0.001, val_size: float = 0.199, random_state: int = 1):
+    def preprocess(self, test_size: float = 0.001, val_size: float = 0.199, random_state: int = 1) -> None:
         self.build_feature_matrix()
         self.build_hetero_graph()
         self.prepare_training_data(test_size, val_size, random_state)
+
+    def get_config(self) -> dict:
+        return {
+            "entity_id": self.entity_id,
+            "relation_id": self.relation_id,
+            "feature_matrix": self.feature_matrix,
+            "hetero_graph": self.hetero_graph,
+            "split_triplets": self.split_triplets,
+            "labels": self.labels
+        }
+
+    def load_config(self, config: dict) -> None:
+        self.entity_id = config["entity_id"]
+        self.relation_id = config["relation_id"]
+        self.feature_matrix = config["feature_matrix"]
+        self.hetero_graph = config["hetero_graph"]
+        self.split_triplets = config["split_triplets"]
+        self.labels = config["labels"]

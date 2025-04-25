@@ -8,9 +8,12 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from sklearn.metrics import roc_auc_score
 import os, datetime
+from kg_library import get_config
+from tqdm import tqdm
+from kg_library.models.embedding_training.EmbeddingPreprocessor import EmbeddingPreprocessor
 
 class GraphNN(nn.Module):
-    def __init__(self, preprocessor, hidden_dim=128, num_layers=3, dropout=0.3):
+    def __init__(self, preprocessor : EmbeddingPreprocessor, hidden_dim=get_config()["hidden_dim"], num_layers=3, dropout=0.3):
         super().__init__()
         self.preprocessor = preprocessor
         self.device = preprocessor.device
@@ -76,6 +79,13 @@ class GraphNN(nn.Module):
     def get_relation_embedding(self, ids):
         return F.normalize(self.relation_embedding(ids.to(self.device)), p=2, dim=1)
 
+    def get_config(self) -> dict:
+        return {
+            "hidden_dim": self.entity_embedding.embedding_dim,
+            "num_layers": self.num_layers,
+            "dropout": self.dropout.p
+        }
+
 
 class GraphTrainer:
     def __init__(self, model, train_loader, val_loader, epochs=100, lr=1e-3, patience=10):
@@ -89,7 +99,7 @@ class GraphTrainer:
         self.writer = SummaryWriter(log_dir=log_dir)
 
         self.optimizer = AdamW(model.parameters(), lr=lr, weight_decay=1e-5)
-        self.scheduler = ReduceLROnPlateau(self.optimizer, mode='max', patience=patience, factor=0.5, verbose=True)
+        self.scheduler = ReduceLROnPlateau(self.optimizer, mode='max', patience=patience, factor=0.5)
 
         print(f"TensorBoard logs will be saved to: {log_dir}")
         print("To view results, run in terminal:")
@@ -104,6 +114,7 @@ class GraphTrainer:
             all_labels = []
 
             for batch in self.train_loader:
+                torch.cuda.empty_cache()
                 batch = batch.to(self.device)
                 graph = self.model.preprocessor.create_hetero_from_batch(batch)
                 output = self.model(graph)
@@ -118,9 +129,12 @@ class GraphTrainer:
                 self.optimizer.zero_grad()
                 loss.backward()
 
-                for name, param in self.model.named_parameters():
+                total_grad_norm = 0.0
+                for param in self.model.parameters():
                     if param.grad is not None:
-                        self.writer.add_histogram(f"gradients/{name}", param.grad, epoch)
+                        total_grad_norm += param.grad.data.norm(2).item() ** 2
+                total_grad_norm = total_grad_norm ** 0.5
+                self.writer.add_scalar("grad_norms/total", total_grad_norm, epoch)
 
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
                 self.optimizer.step()
@@ -144,7 +158,8 @@ class GraphTrainer:
 
             print(f"Epoch {epoch:03d} | Loss: {epoch_loss / len(self.train_loader):.4f} | "
                   f"Train AUC: {train_auc:.4f} | Val AUC: {val_auc:.4f}")
-
+            self.save_with_config()
+            print("Model saved")
             self.current_epoch += 1
 
         self.writer.close()
@@ -169,3 +184,21 @@ class GraphTrainer:
         scores = torch.cat(scores_list)
         labels = torch.cat(labels_list)
         return roc_auc_score(labels, scores)
+
+    def save_model(self):
+        torch.save({
+            'model_state_dict': self.model.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'scheduler_state_dict': self.scheduler.state_dict(),
+            'current_epoch': self.current_epoch
+        }, "model.pt")
+
+    def save_with_config(self):
+        torch.save({
+            'model_state_dict': self.model.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'scheduler_state_dict': self.scheduler.state_dict(),
+            'current_epoch': self.current_epoch,
+            'model_config': self.model.get_config(),
+            'preprocessor_config': self.model.preprocessor.get_config()
+        }, "model_with_config.pt")
