@@ -25,6 +25,29 @@ class TripletsDataset(Dataset):
         )
 
 
+class InferenceTriplets(Dataset):
+    def __init__(self, triplets : list[tuple[int, int, int]], preprocessor : EmbeddingPreprocessor, labels : list[int]):
+        super().__init__()
+        self.preprocessor = preprocessor
+        self.labels = labels
+        self.triplets = triplets
+
+    def __len__(self) -> int:
+        return len(self.triplets)
+
+    def __getitem__(self, item) -> Data:
+        h, r, t = self.triplets[item]
+        head_id = self.preprocessor.get_or_create_entity_id(h)
+        tail_id = self.preprocessor.get_or_create_entity_id(t)
+        relation_id = self.preprocessor.get_or_create_relation_id(r)
+        labels = self.labels[item]
+        return Data(
+            head=torch.tensor([head_id], dtype=torch.long),
+            tail=torch.tensor([tail_id], dtype=torch.long),
+            edge_attr=torch.tensor([relation_id], dtype=torch.long),
+            y=torch.tensor([labels], dtype=torch.float)
+        )
+
 
 def create_single_batch_dataloader(preprocessor: EmbeddingPreprocessor) -> tuple[DataLoader, DataLoader, DataLoader]:
     train_data = TripletsDataset(preprocessor.split_triplets[0], preprocessor.labels[0], preprocessor.relation_id)
@@ -48,3 +71,7 @@ def create_dataloader(preprocessor : EmbeddingPreprocessor, batch_size=64) -> tu
     test_loader = DataLoader(test_data, batch_size=batch_size)
 
     return train_loader, val_loader, test_loader
+
+def create_inference_dataloader(preprocessor : EmbeddingPreprocessor, triplets : list[tuple[int, int, int]], labels : list[int], batch_size=64) -> DataLoader:
+    dataset = InferenceTriplets(triplets, preprocessor, labels)
+    return DataLoader(dataset, batch_size=batch_size, shuffle=False)

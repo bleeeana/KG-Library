@@ -32,13 +32,6 @@ class Preprocessing:
 
         return resolved_text
 
-    def __set_mode(self):
-        spacy.prefer_gpu()
-        if spacy.prefer_gpu():
-            print("Используется GPU")
-        else:
-            print("Используется CPU")
-
     def __split_text_to_segments(self, text: str) -> List[str]:
         return self.segmenter.segment(text)
 

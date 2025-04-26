@@ -170,6 +170,16 @@ class EmbeddingPreprocessor:
         self.build_hetero_graph()
         self.prepare_training_data(test_size, val_size, random_state)
 
+    def get_or_create_relation_id(self, relation: str) -> int:
+        if relation not in self.relation_id:
+            self.relation_id[relation] = len(self.relation_id)
+        return self.relation_id[relation]
+
+    def get_or_create_entity_id(self, entity: str) -> int:
+        if entity not in self.entity_id:
+            self.entity_id[entity] = len(self.entity_id)
+        return self.entity_id[entity]
+
     def get_config(self) -> dict:
         return {
             "entity_id": self.entity_id,

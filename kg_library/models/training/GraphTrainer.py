@@ -1,91 +1,13 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch_geometric.data import HeteroData
-from torch_geometric.nn import HeteroConv, GATv2Conv
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from sklearn.metrics import roc_auc_score
 import os, datetime
-from kg_library import get_config
-from tqdm import tqdm
-from kg_library.models.embedding_training.EmbeddingPreprocessor import EmbeddingPreprocessor
-
-class GraphNN(nn.Module):
-    def __init__(self, preprocessor : EmbeddingPreprocessor, hidden_dim=get_config()["hidden_dim"], num_layers=3, dropout=0.3):
-        super().__init__()
-        self.preprocessor = preprocessor
-        self.device = preprocessor.device
-        self.num_layers = num_layers
-
-        num_entities = len(preprocessor.entity_id) + 1
-        num_relations = len(preprocessor.relation_id) + 1
-        input_dim = preprocessor.feature_matrix.size(1)
-
-        self.entity_embedding = nn.Embedding(num_entities, hidden_dim)
-        self.relation_embedding = nn.Embedding(num_relations, hidden_dim)
-
-        self.feature_proj = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
-            nn.LayerNorm(hidden_dim),
-            nn.LeakyReLU(0.2)
-        )
-
-        self.skip_weights = nn.Parameter(torch.ones(num_layers))
-        self.gamma = nn.Parameter(torch.tensor(10.0))
-
-        self.convs = nn.ModuleList([
-            HeteroConv({
-                edge_type: GATv2Conv(
-                    (-1, -1),
-                    hidden_dim,
-                    heads=4,
-                    concat=False,
-                    dropout=dropout
-                ) for edge_type in preprocessor.hetero_graph.edge_types
-            }, aggr='mean') for _ in range(num_layers)
-        ])
-
-        self.dropout = nn.Dropout(dropout)
-        self.to(self.device)
-
-    def forward(self, graph : HeteroData):
-        node_features = self.feature_proj(self.preprocessor.feature_matrix.to(self.device))
-        node_embeddings = F.normalize(
-            self.entity_embedding(torch.arange(node_features.size(0), device=self.device)),
-            p=2, dim=1
-        )
-
-        x = {"entity": 0.7 * node_features + 0.5 * node_embeddings}
-        x_initial = x.copy()
-
-        for i, conv in enumerate(self.convs):
-            x_updated = conv(x, graph.edge_index_dict)
-            alpha = torch.sigmoid(self.skip_weights[i])
-            x = {
-                key: F.leaky_relu(self.dropout(val), 0.2) + alpha * x_initial[key]
-                for key, val in x_updated.items()
-            }
-
-        return x
-
-    def score_function(self, head, tail, relation):
-        return self.gamma - torch.norm(head + relation - tail, p=2, dim=1)
-
-    def get_entity_embedding(self, ids):
-        return F.normalize(self.entity_embedding(ids.to(self.device)), p=2, dim=1)
-
-    def get_relation_embedding(self, ids):
-        return F.normalize(self.relation_embedding(ids.to(self.device)), p=2, dim=1)
-
-    def get_config(self) -> dict:
-        return {
-            "hidden_dim": self.entity_embedding.embedding_dim,
-            "num_layers": self.num_layers,
-            "dropout": self.dropout.p
-        }
-
+from kg_library.models import EarlyStoppingController
+from kg_library.common import GraphJSON
+import torch.nn.functional as F
+import torch
+from kg_library.models import EmbeddingPreprocessor, GraphNN
 
 class GraphTrainer:
     def __init__(self, model, train_loader, val_loader, epochs=100, lr=1e-3, patience=10):
@@ -97,7 +19,7 @@ class GraphTrainer:
         self.current_epoch = 0
         log_dir = os.path.join("runs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
         self.writer = SummaryWriter(log_dir=log_dir)
-
+        self.early_stopper = EarlyStoppingController()
         self.optimizer = AdamW(model.parameters(), lr=lr, weight_decay=1e-5)
         self.scheduler = ReduceLROnPlateau(self.optimizer, mode='max', patience=patience, factor=0.5)
 
@@ -155,12 +77,20 @@ class GraphTrainer:
             self.writer.add_scalar("AUC/val", val_auc, epoch)
             self.writer.add_scalar("LearningRate", self.optimizer.param_groups[0]['lr'], epoch)
 
-
             print(f"Epoch {epoch:03d} | Loss: {epoch_loss / len(self.train_loader):.4f} | "
                   f"Train AUC: {train_auc:.4f} | Val AUC: {val_auc:.4f}")
+
+            self.early_stopper(val_auc, self.model)
+
+            if self.early_stopper.early_stop:
+                print("Early stopping, saving the best configuration")
+                self.early_stopper.restore_best_state(self.model)
+                self.save_with_config()
+                break
+
+            self.current_epoch += 1
             self.save_with_config()
             print("Model saved")
-            self.current_epoch += 1
 
         self.writer.close()
 
@@ -185,20 +115,25 @@ class GraphTrainer:
         labels = torch.cat(labels_list)
         return roc_auc_score(labels, scores)
 
-    def save_model(self):
-        torch.save({
-            'model_state_dict': self.model.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'scheduler_state_dict': self.scheduler.state_dict(),
-            'current_epoch': self.current_epoch
-        }, "model.pt")
-
     def save_with_config(self):
         torch.save({
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
             'scheduler_state_dict': self.scheduler.state_dict(),
-            'current_epoch': self.current_epoch,
             'model_config': self.model.get_config(),
-            'preprocessor_config': self.model.preprocessor.get_config()
+            'preprocessor_config': self.model.preprocessor.get_config(),
+            'graph' : 'test.json'
         }, "model_with_config.pt")
+
+
+    # для дообучения
+    @staticmethod
+    def load_model_for_training(model_path="model_with_config.pt", map_location='cuda', train_loader = None, val_loader = None):
+        checkpoint = torch.load(model_path, map_location=map_location)
+        graph = GraphJSON.load(checkpoint["graph"])
+        preprocessor = EmbeddingPreprocessor(graph)
+        preprocessor.load_config(checkpoint["preprocessor_config"])
+        model = GraphNN(preprocessor, hidden_dim=checkpoint["model_config"]["hidden_dim"], num_layers=checkpoint["model_config"]["num_layers"], dropout=checkpoint["model_config"]["dropout"])
+        model.load_state_dict(checkpoint["model_state_dict"])
+        model.to(preprocessor.device)
+        return GraphTrainer(model, train_loader, val_loader)

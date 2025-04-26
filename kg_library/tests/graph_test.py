@@ -65,7 +65,7 @@ class TestGraphData(unittest.TestCase):
 
     def test_save_to_json(self):
         app_facade = AppFacade()
-        app_facade.generate_graph()
+        app_facade.generate_graph_for_learning()
         GraphJSON.save(app_facade.graph, "test.json")
         loaded_graph = GraphJSON.load("test.json")
         self.assertEqual(len(app_facade.graph.nodes), len(loaded_graph.nodes))

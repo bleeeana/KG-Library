@@ -1,4 +1,6 @@
 from kg_library.models.entity_extraction.KnowledgeExtractor import KnowledgeGraphExtractor
-from kg_library.models.embedding_training.EmbeddingPreprocessor import EmbeddingPreprocessor
-from kg_library.models.embedding_training.DataLoader import create_dataloader, create_single_batch_dataloader
-from kg_library.models.embedding_training.GraphNN import GraphNN, GraphTrainer
+from kg_library.models.training.EmbeddingPreprocessor import EmbeddingPreprocessor
+from kg_library.models.training.DataLoader import create_dataloader, create_single_batch_dataloader
+from kg_library.models.training.GraphNN import GraphNN
+from kg_library.models.training.GraphTrainer import GraphTrainer
+from kg_library.models.training.EarlyStoppingController import EarlyStoppingController
