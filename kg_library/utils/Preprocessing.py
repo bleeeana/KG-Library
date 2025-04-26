@@ -23,7 +23,7 @@ class Preprocessing:
         resolved_text = ""
         for token in coref_doc:
             repres = coref_doc._.coref_chains.resolve(token)
-            print(coref_doc._.coref_chains)
+            #print(coref_doc._.coref_chains)
             if repres:
                 resolved_text += " " + " and ".join(
                     [t.text if t.ent_type_ == "" else [e.text for e in coref_doc.ents if t in e][0] for t in repres])

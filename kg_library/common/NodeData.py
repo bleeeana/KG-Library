@@ -10,6 +10,10 @@ class NodeData:
         if output_relation is not None:
             self.add_output(output_relation)
 
+    def set_new_feature(self, feature : str):
+        if feature != "default":
+            self.feature = feature
+
     def add_input(self, edge : EdgeData):
         self.__input_relations.append(edge)
 

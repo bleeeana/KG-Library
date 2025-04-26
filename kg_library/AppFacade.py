@@ -14,7 +14,7 @@ class AppFacade:
         self.model : GraphNN
         self.graph = GraphData()
         self.dataset = data_frame
-        self.size = 250
+        self.size = 200
 
     def input_base_data(self):
         for i in range(self.size):
@@ -28,10 +28,10 @@ class AppFacade:
             print(genres)
             publication_date = self.dataset['Publication date'][i]
             print(publication_date)
-            if title != 'None' or author != 'None':
+            if title is not None or author is not None:
                 self.graph.add_new_triplet(title, "author", author, check_synonyms=False, head_feature="title",
                                            tail_feature="person")
-            if publication_date != 'None':
+            if publication_date is not None:
                 self.graph.add_new_triplet(title, "published_in", publication_date, check_synonyms=False,
                                            head_feature="title", tail_feature="date")
             for genre in genres:
@@ -82,20 +82,27 @@ class AppFacade:
         summary = self.dataset["Summarized Plot Summary"][index]
         if summary != 'None':
             extracted_triplets = self.knowledge_graph_extractor.extract_from_full_text(summary)
-            for head, relation, tail in extracted_triplets:
-                self.graph.add_new_triplet(head, relation, tail, check_synonyms=True)
-
+            for head, relation, tail, head_feature, tail_feature in extracted_triplets:
+                if head is not None or relation is not None or tail is not None:
+                    if head_feature is None:
+                        head_feature = "default"
+                    if tail_feature is None:
+                        tail_feature = "default"
+                    if head_feature.lower() == "person":
+                        head_feature = "character"
+                    if tail_feature.lower() == "person":
+                        tail_feature = "character"
+                    self.graph.add_new_triplet(head, relation, tail, check_synonyms=True, head_feature=head_feature.lower(), tail_feature=tail_feature.lower())
 
     def extract_plot(self, index) -> set:
         plot = self.dataset["Plot summary"][index]
         extracted_triplets = set()
         if plot != 'None':
-            extracted_triplets = self.knowledge_graph_extractor.extract_from_full_text(plot)
+            extracted_triplets.add(self.knowledge_graph_extractor.extract_from_full_text(plot))
         return extracted_triplets
 
     def generate_graph_for_learning(self):
         self.input_base_data()
-
 
     def learning_process(self):
         self.generate_graph_for_learning()

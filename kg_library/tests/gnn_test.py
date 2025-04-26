@@ -5,7 +5,6 @@ from kg_library.models import EmbeddingPreprocessor
 from kg_library.models import GraphTrainer, GraphNN, create_dataloader
 from kg_library.utils import create_test_graph
 
-import torch
 
 class GNNTest(unittest.TestCase):
     def test_train(self):
