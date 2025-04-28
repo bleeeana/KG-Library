@@ -31,7 +31,7 @@ class GNNTest(unittest.TestCase):
         preprocessor = EmbeddingPreprocessor(graph)
         preprocessor.preprocess()
         model = GraphNN(preprocessor)
-        train_loader, test_loader, val_loader = create_dataloader(preprocessor, batch_size=128)
+        train_loader, test_loader, val_loader = create_dataloader(preprocessor, batch_size=64)
 
         print(f"entity id: {preprocessor.entity_id}")
         print(f"relation id: {preprocessor.relation_id}")

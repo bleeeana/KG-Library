@@ -51,7 +51,7 @@ class GraphNN(nn.Module):
             p=2, dim=1
         )
 
-        x = {"entity": 0.7 * node_features + 0.5 * node_embeddings}
+        x = {"entity": 0.6 * node_features + 0.4 * node_embeddings}
         x_initial = x.copy()
 
         for i, conv in enumerate(self.convs):
@@ -80,12 +80,6 @@ class GraphNN(nn.Module):
             "dropout": self.dropout.p
         }
 
-    def save_for_inference(self, path="model.pt"):
-        torch.save({
-            'model_state_dict': self.model.state_dict(),
-            'model_config': self.model.get_config()
-        }, path)
-
     # без дообучения
     @staticmethod
     def load_model(model_path="model.pt", map_location='cuda', preprocessor : EmbeddingPreprocessor = None, ):
@@ -95,5 +89,3 @@ class GraphNN(nn.Module):
         model.eval()
         model.to(preprocessor.device)
         return model
-
-

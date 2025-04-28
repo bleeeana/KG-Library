@@ -27,6 +27,7 @@ class EmbeddingPrepareTest(unittest.TestCase):
         preprocessor.preprocess()
         print(f"feature matrix: {preprocessor.feature_matrix}")
         print(f"hetero data node types: {preprocessor.hetero_graph.node_types}")
+        print(f"hetero data edge types: {preprocessor.hetero_graph.edge_types}")
         print(f"hetero data: {preprocessor.hetero_graph.to_dict()}")
         print(f"entity id: {preprocessor.entity_id}")
         print(f"relation id: {preprocessor.relation_id}")

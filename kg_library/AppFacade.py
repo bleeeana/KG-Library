@@ -1,8 +1,8 @@
-from kg_library.common import GraphData, WikidataExtractor
+from kg_library.common import GraphData, WikidataExtractor, data_frame, GraphJSON
 from kg_library.models import KnowledgeGraphExtractor, GraphTrainer, GraphNN, EmbeddingPreprocessor, create_dataloader
-from kg_library.common import data_frame
 from kg_library import Neo4jConnection
-
+from kg_library.utils import AudioProcessor
+import torch
 
 class AppFacade:
     def __init__(self):
@@ -12,6 +12,7 @@ class AppFacade:
         self.graph_trainer : GraphTrainer
         self.preprocessor : EmbeddingPreprocessor
         self.model : GraphNN
+        self.audio_processor = AudioProcessor()
         self.graph = GraphData()
         self.dataset = data_frame
         self.size = 200
@@ -103,6 +104,7 @@ class AppFacade:
 
     def generate_graph_for_learning(self):
         self.input_base_data()
+        self.learning_process()
 
     def learning_process(self):
         self.generate_graph_for_learning()
@@ -116,5 +118,32 @@ class AppFacade:
         print(f"Final Val AUC: {val_auc}")
         self.graph_trainer.save_with_config()
 
-    def generate_graph(self, text : str):
+    def generate_graph_from_audio(self, audio : str):
+        text = self.audio_processor.transform_to_text(audio)
+        self.generate_graph_from_text(text)
+
+    def generate_graph_from_text(self, text : str):
+        triplets = self.knowledge_graph_extractor.extract_from_full_text(text)
+
+    def find_internal_links(self):
+        pass
+
+    def load_model(self, model_path="model.pt", map_location='cuda'):
+        checkpoint = torch.load(model_path, map_location=map_location)
+        if "graph" in checkpoint:
+            self.graph = GraphJSON.load(checkpoint["graph"])
+            self.preprocessor = EmbeddingPreprocessor(self.graph)
+            self.preprocessor.load_config(checkpoint["preprocessor_config"])
+        self.model = GraphNN.load_model(model_path, map_location=map_location, preprocessor=self.preprocessor)
+
+    def load_model_for_finetune(self, model_path="model_with_config.pt", map_location='cuda'):
+        checkpoint = torch.load(model_path, map_location=map_location)
+        self.graph = GraphJSON.load(checkpoint["graph"])
+        self.preprocessor = EmbeddingPreprocessor(self.graph)
+        self.preprocessor.load_config(checkpoint["preprocessor_config"])
+        train_loader, test_loader, val_loader = create_dataloader(self.preprocessor, batch_size=64)
+        self.graph_trainer = GraphTrainer.load_model_for_training(model_path, map_location=map_location, train_loader=train_loader, val_loader=val_loader)
+        self.model = self.graph_trainer.model
+
+    def finetune_model(self):
         pass

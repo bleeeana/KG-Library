@@ -115,15 +115,15 @@ class GraphTrainer:
         labels = torch.cat(labels_list)
         return roc_auc_score(labels, scores)
 
-    def save_with_config(self):
+    def save_with_config(self, model_path="model_with_config.pt", graph_path="test.json"):
         torch.save({
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
             'scheduler_state_dict': self.scheduler.state_dict(),
             'model_config': self.model.get_config(),
             'preprocessor_config': self.model.preprocessor.get_config(),
-            'graph' : 'test.json'
-        }, "model_with_config.pt")
+            'graph' : graph_path
+        }, model_path)
 
 
     # для дообучения

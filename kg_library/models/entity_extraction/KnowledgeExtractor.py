@@ -72,7 +72,7 @@ class KnowledgeGraphExtractor:
 
         return triplets
 
-    def extract_from_text(self, text: str, num_beams=1, max_length=512) -> list:
+    def extract_from_text(self, text: str, num_beams=1, max_length=1024) -> list:
         model_inputs = self.tokenizer(text, max_length=max_length, padding=True, truncation=True, return_tensors="pt")
         print(text)
         generated_tokens = self.model.generate(

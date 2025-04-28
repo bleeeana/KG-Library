@@ -10,6 +10,7 @@ class EmbeddingPreprocessor:
     def __init__(self, graph: GraphData):
         self.graph = graph
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.feature_names = None
         self.entity_id = None
         self.relation_id = None
         self.feature_matrix = None
@@ -24,14 +25,19 @@ class EmbeddingPreprocessor:
         if self.device.type == 'cuda':
             print(f"GPU Name: {torch.cuda.get_device_name(0)}")
 
+    def get_feature_tensor(self, feature_name: str) -> torch.Tensor:
+        feature = torch.zeros(len(self.feature_names), dtype=torch.float32).to(self.device)
+        feature[self.feature_names.index(feature_name)] = 1.0
+        return feature
+
     def build_feature_matrix(self) -> None:
         unique_entities, unique_relations = self.graph.get_unique_sets()
         self.entity_id = {entity: i for i, entity in enumerate(unique_entities)}
         self.relation_id = {relation: i for i, relation in enumerate(unique_relations)}
-        feature_names = sorted({node.feature for node in self.graph.nodes})
-        feature_index = {name: i for i, name in enumerate(feature_names)}
-        print(f"Detected features: {feature_names}")
-        features = np.zeros((len(unique_entities), len(feature_names)), dtype=np.float32)
+        self.feature_names = sorted({node.feature for node in self.graph.nodes})
+        feature_index = {name: i for i, name in enumerate(self.feature_names)}
+        print(f"Detected features: {self.feature_names}")
+        features = np.zeros((len(unique_entities), len(self.feature_names)), dtype=np.float32)
 
         for node in self.graph.nodes:
             eid = self.entity_id[node.name]

@@ -1,7 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import quote
-from typing import Dict, List
 from kg_library import get_config
 
 class WikidataExtractor:
@@ -145,7 +144,7 @@ class WikidataExtractor:
 
         return book_info
 
-    def get_openlibrary_characters(self, title: str) -> List[Dict]:
+    def get_openlibrary_characters(self, title: str) -> list[dict]:
         try:
             search_url = f"{self.openlibrary_base}/search.json?q={quote(title)}"
             search_res = requests.get(search_url, timeout=15).json()
