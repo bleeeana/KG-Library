@@ -104,7 +104,17 @@ class GraphData:
                 result[-1][self.nodes.index(target_node)] = 1
         return result
 
+    def has_triplet(self, head : str, relation : str, tail : str) -> bool:
+        return any((triplet[0].name, triplet[1].get_relation(), triplet[2].name) == (head, relation, tail) for triplet in self.triplets)
+
     def get_unique_sets(self) -> tuple[list[str], list[str]]:
         unique_nodes = list(OrderedDict.fromkeys(node.name for node in self.nodes))
         unique_relations = list(OrderedDict.fromkeys(edge.get_relation() for edge in self.edges))
         return unique_nodes, unique_relations
+
+    def clone(self):
+        new_graph = GraphData()
+        new_graph.entities = self.nodes.copy()
+        new_graph.relations = self.edges.copy()
+        new_graph.triplets = self.triplets.copy()
+        return new_graph

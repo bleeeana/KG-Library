@@ -1,17 +1,20 @@
+from typing import Optional
 from kg_library.common import GraphData, WikidataExtractor, data_frame, GraphJSON
 from kg_library.models import KnowledgeGraphExtractor, GraphTrainer, GraphNN, EmbeddingPreprocessor, create_dataloader
 from kg_library import Neo4jConnection
+from kg_library.models.evaluation.TripletEvaluator import TripletEvaluator
 from kg_library.utils import AudioProcessor
 import torch
+import copy
 
 class AppFacade:
     def __init__(self):
         self.knowledge_graph_extractor = KnowledgeGraphExtractor()
-        self.neo4j_connection = Neo4jConnection()
+        #self.neo4j_connection = Neo4jConnection()
         self.base_information_extractor = WikidataExtractor()
-        self.graph_trainer : GraphTrainer
-        self.preprocessor : EmbeddingPreprocessor
-        self.model : GraphNN
+        self.graph_trainer : Optional[GraphTrainer] = None
+        self.preprocessor : Optional[EmbeddingPreprocessor] = None
+        self.model : Optional[GraphNN] = None
         self.audio_processor = AudioProcessor()
         self.graph = GraphData()
         self.dataset = data_frame
@@ -97,14 +100,28 @@ class AppFacade:
 
     def extract_plot(self, index) -> set:
         plot = self.dataset["Plot summary"][index]
-        extracted_triplets = set()
         if plot != 'None':
-            extracted_triplets.add(self.knowledge_graph_extractor.extract_from_full_text(plot))
-        return extracted_triplets
+            return self.knowledge_graph_extractor.extract_from_full_text(plot)
+        else:
+            return set()
 
-    def generate_graph_for_learning(self):
-        self.input_base_data()
-        self.learning_process()
+    def generate_graph_for_learning(self, load_model_from_file=False, load_triplets_from_file=False):
+        if load_model_from_file:
+            self.load_model_for_finetune()
+        else:
+            self.input_base_data()
+            self.learning_process()
+        #self.find_internal_links()
+        extra_triplets = set()
+        if not load_triplets_from_file:
+            for i in range(self.size):
+                print(i, end="\n\n")
+                extra_triplets.update(self.extract_plot(i))
+            self.knowledge_graph_extractor.save_triplets_to_json()
+        else:
+            self.knowledge_graph_extractor.load_triplets_from_json()
+            extra_triplets = self.knowledge_graph_extractor.triplets
+        self.finetune_model(extra_triplets)
 
     def learning_process(self):
         self.generate_graph_for_learning()
@@ -126,7 +143,10 @@ class AppFacade:
         triplets = self.knowledge_graph_extractor.extract_from_full_text(text)
 
     def find_internal_links(self):
-        pass
+        evaluator = TripletEvaluator(self.model)
+        print("Internal links:")
+        result = evaluator.link_prediction_in_graph()
+        print(result, end='\n\n')
 
     def load_model(self, model_path="model.pt", map_location='cuda'):
         checkpoint = torch.load(model_path, map_location=map_location)
@@ -137,13 +157,108 @@ class AppFacade:
         self.model = GraphNN.load_model(model_path, map_location=map_location, preprocessor=self.preprocessor)
 
     def load_model_for_finetune(self, model_path="model_with_config.pt", map_location='cuda'):
-        checkpoint = torch.load(model_path, map_location=map_location)
+        checkpoint = torch.load(model_path, map_location=map_location, weights_only=False)
         self.graph = GraphJSON.load(checkpoint["graph"])
         self.preprocessor = EmbeddingPreprocessor(self.graph)
         self.preprocessor.load_config(checkpoint["preprocessor_config"])
         train_loader, test_loader, val_loader = create_dataloader(self.preprocessor, batch_size=64)
-        self.graph_trainer = GraphTrainer.load_model_for_training(model_path, map_location=map_location, train_loader=train_loader, val_loader=val_loader)
+        self.graph_trainer = GraphTrainer.load_model_for_training(self.preprocessor, model_path, map_location=map_location, train_loader=train_loader, val_loader=val_loader)
         self.model = self.graph_trainer.model
 
-    def finetune_model(self):
-        pass
+    def finetune_model(self, new_triplets, confidence_threshold=0.75) -> dict:
+        if self.graph_trainer is None:
+            self.load_model_for_finetune()
+        updated_graph = self.graph.clone()
+        evaluator = TripletEvaluator(self.model)
+        added_triplets = 0
+        print("New triplets:", new_triplets)
+        for head, relation, tail, head_feature, tail_feature in new_triplets:
+            if updated_graph.has_triplet(head, relation, tail):
+                print(f"Already has triplet {head} - [{relation}] -> {tail}")
+                continue
+            head_id = self.preprocessor.entity_id.get(head, None)
+            tail_id = self.preprocessor.entity_id.get(tail, None)
+
+            score = evaluator.score_new_triplet(
+                head_feature=head_feature,
+                tail_feature=tail_feature,
+                head_name=head,
+                tail_name=tail,
+                relation=relation,
+                head_id=head_id,
+                tail_id=tail_id,
+                graph=self.preprocessor.hetero_graph
+            )
+
+            probability = torch.sigmoid(torch.tensor(score)).item()
+
+            if probability > confidence_threshold:
+                print(f"Adding new triplet {head} - [{relation}] -> {tail} (score: {probability:.4f})")
+                updated_graph.add_new_triplet(
+                    head=head,
+                    relation=relation,
+                    tail=tail,
+                    check_synonyms=True,
+                    head_feature=head_feature,
+                    tail_feature=tail_feature
+                )
+                added_triplets += 1
+            else:
+                print(f"Discarding new triplet {head} - [{relation}] -> {tail} (score: {probability:.4f})")
+
+        if added_triplets == 0:
+            return {}
+
+        updated_preprocessor = EmbeddingPreprocessor(updated_graph)
+        updated_preprocessor.preprocess()
+        updated_train_loader, updated_test_loader, updated_val_loader = create_dataloader(updated_preprocessor, batch_size=64)
+
+        new_model = GraphNN(
+            preprocessor=updated_preprocessor,
+            hidden_dim=self.model.get_config()["hidden_dim"],
+            num_layers=self.model.get_config()["num_layers"],
+            dropout=self.model.get_config()["dropout"]
+        )
+
+        self._transfer_weights(self.model, new_model, updated_preprocessor)
+
+        trainer = GraphTrainer(new_model, updated_train_loader, updated_val_loader, epochs=15)
+
+        print(f"Начинаем дообучение на {added_triplets} новых триплетах...")
+        best_auc = trainer.train()
+
+        test_auc = trainer.evaluate(updated_val_loader)
+        print(f"Финальный Test AUC после дообучения: {test_auc:.4f}")
+
+        trainer.save_with_config("model_finetuned.pt", "graph_finetuned.json")
+
+        self.model = new_model
+        self.graph = updated_graph
+        self.preprocessor = updated_preprocessor
+
+        return {
+            "added_triplets": added_triplets,
+            "final_val_auc": best_auc,
+            "final_test_auc": test_auc
+        }
+
+    def _transfer_weights(self, model, new_model, updated_preprocessor):
+        with torch.no_grad():
+            for entity, old_id in model.preprocessor.entity_id.items():
+                if entity in updated_preprocessor.entity_id:
+                    new_id = updated_preprocessor.entity_id[entity]
+                    new_model.entity_embedding.weight[new_id] = model.entity_embedding.weight[old_id]
+
+            for relation, old_id in model.preprocessor.relation_id.items():
+                if relation in updated_preprocessor.relation_id:
+                    new_id = updated_preprocessor.relation_id[relation]
+                    new_model.relation_embedding.weight[new_id] = model.relation_embedding.weight[old_id]
+
+            for name, param in model.named_parameters():
+                if "embedding" not in name:
+                    try:
+                        new_param = new_model.get_parameter(name)
+                        if param.shape == new_param.shape:
+                            new_param.copy_(param)
+                    except Exception:
+                        continue

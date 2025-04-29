@@ -10,7 +10,7 @@ import torch
 from kg_library.models import EmbeddingPreprocessor, GraphNN
 
 class GraphTrainer:
-    def __init__(self, model, train_loader, val_loader, epochs=100, lr=1e-3, patience=10):
+    def __init__(self, model, train_loader, val_loader, epochs=100, lr=1e-3, patience=4):
         self.model = model
         self.device = model.device
         self.train_loader = train_loader
@@ -128,11 +128,8 @@ class GraphTrainer:
 
     # для дообучения
     @staticmethod
-    def load_model_for_training(model_path="model_with_config.pt", map_location='cuda', train_loader = None, val_loader = None):
-        checkpoint = torch.load(model_path, map_location=map_location)
-        graph = GraphJSON.load(checkpoint["graph"])
-        preprocessor = EmbeddingPreprocessor(graph)
-        preprocessor.load_config(checkpoint["preprocessor_config"])
+    def load_model_for_training(preprocessor : EmbeddingPreprocessor, model_path="model_with_config.pt", map_location='cuda', train_loader = None, val_loader = None):
+        checkpoint = torch.load(model_path, map_location=map_location, weights_only=False)
         model = GraphNN(preprocessor, hidden_dim=checkpoint["model_config"]["hidden_dim"], num_layers=checkpoint["model_config"]["num_layers"], dropout=checkpoint["model_config"]["dropout"])
         model.load_state_dict(checkpoint["model_state_dict"])
         model.to(preprocessor.device)

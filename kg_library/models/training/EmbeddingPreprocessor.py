@@ -26,6 +26,8 @@ class EmbeddingPreprocessor:
             print(f"GPU Name: {torch.cuda.get_device_name(0)}")
 
     def get_feature_tensor(self, feature_name: str) -> torch.Tensor:
+        if self.feature_names is None:
+            self.feature_names = sorted({node.feature for node in self.graph.nodes})
         feature = torch.zeros(len(self.feature_names), dtype=torch.float32).to(self.device)
         feature[self.feature_names.index(feature_name)] = 1.0
         return feature
