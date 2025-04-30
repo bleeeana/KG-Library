@@ -1,5 +1,4 @@
 from torch_geometric.data import HeteroData
-
 from kg_library.models import GraphNN, EmbeddingPreprocessor
 import torch
 import torch.nn.functional as F

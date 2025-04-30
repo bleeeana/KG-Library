@@ -10,7 +10,7 @@ class EmbeddingPreprocessor:
     def __init__(self, graph: GraphData):
         self.graph = graph
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.feature_names = None
+        self.feature_names = set()
         self.entity_id = None
         self.relation_id = None
         self.feature_matrix = None
@@ -32,11 +32,16 @@ class EmbeddingPreprocessor:
         feature[self.feature_names.index(feature_name)] = 1.0
         return feature
 
+    def expand_feature_names(self, feature_names: list):
+        for feature_name in feature_names:
+            self.feature_names.add(feature_name)
+
+
     def build_feature_matrix(self) -> None:
         unique_entities, unique_relations = self.graph.get_unique_sets()
         self.entity_id = {entity: i for i, entity in enumerate(unique_entities)}
         self.relation_id = {relation: i for i, relation in enumerate(unique_relations)}
-        self.feature_names = sorted({node.feature for node in self.graph.nodes})
+        self.feature_names = sorted({node.feature.lower() for node in self.graph.nodes})
         feature_index = {name: i for i, name in enumerate(self.feature_names)}
         print(f"Detected features: {self.feature_names}")
         features = np.zeros((len(unique_entities), len(self.feature_names)), dtype=np.float32)
@@ -173,8 +178,9 @@ class EmbeddingPreprocessor:
             hetero_data[relation_tuple].edge_index = torch.tensor([src, dest], dtype=torch.long).to(self.device)
         return hetero_data
 
-    def preprocess(self, test_size: float = 0.001, val_size: float = 0.199, random_state: int = 1) -> None:
+    def preprocess(self, feature_names: list, test_size: float = 0.001, val_size: float = 0.199, random_state: int = 1) -> None:
         self.build_feature_matrix()
+        self.expand_feature_names(feature_names)
         self.build_hetero_graph()
         self.prepare_training_data(test_size, val_size, random_state)
 

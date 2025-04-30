@@ -5,7 +5,6 @@ from kg_library import Neo4jConnection
 from kg_library.models.evaluation.TripletEvaluator import TripletEvaluator
 from kg_library.utils import AudioProcessor
 import torch
-import copy
 
 class AppFacade:
     def __init__(self):
@@ -126,7 +125,8 @@ class AppFacade:
     def learning_process(self):
         self.generate_graph_for_learning()
         self.preprocessor = EmbeddingPreprocessor(self.graph)
-        self.preprocessor.preprocess()
+        self.preprocessor.preprocess(self.knowledge_graph_extractor.type_map.values())
+
         self.model = GraphNN(self.preprocessor)
         train_loader, test_loader, val_loader = create_dataloader(self.preprocessor, batch_size=128)
         self.graph_trainer = GraphTrainer(self.model, train_loader, val_loader, epochs=10, lr=0.0005)
@@ -139,8 +139,106 @@ class AppFacade:
         text = self.audio_processor.transform_to_text(audio)
         self.generate_graph_from_text(text)
 
-    def generate_graph_from_text(self, text : str):
-        triplets = self.knowledge_graph_extractor.extract_from_full_text(text)
+    def generate_graph_from_text(self, text : str, confidence_threshold = 0.65, find_internal_links = True) -> GraphData:
+        raw_triplets = self.knowledge_graph_extractor.extract_from_full_text(text)
+        temp_graph = GraphData()
+        if self.model is None:
+            try:
+                print("Загрузка модели для фильтрации триплетов...")
+                self.load_model(model_path="model_finetune.pt", map_location='cuda')
+                print("Модель успешно загружена")
+            except Exception as e:
+                print(f"Невозможно загрузить модель: {str(e)}")
+                for head, relation, tail, head_feature, tail_feature in raw_triplets:
+                    temp_graph.add_new_triplet(
+                        head=head,
+                        relation=relation,
+                        tail=tail,
+                        check_synonyms=True,
+                        head_feature=head_feature.lower() if head_feature else "default",
+                        tail_feature=tail_feature.lower() if tail_feature else "default"
+                    )
+
+                self.graph = temp_graph
+                return temp_graph
+        evaluator = TripletEvaluator(self.model)
+        filtered_triplets = []
+        print(f"Фильтрация {len(raw_triplets)} триплетов")
+        for head, relation, tail, head_feature, tail_feature in raw_triplets:
+            head_id = self.preprocessor.entity_id.get(head, None)
+            tail_id = self.preprocessor.entity_id.get(tail, None)
+            score = evaluator.score_new_triplet(
+                head_feature=head_feature,
+                tail_feature=tail_feature,
+                head_name=head,
+                tail_name=tail,
+                relation=relation,
+                head_id=head_id,
+                tail_id=tail_id,
+                graph=self.preprocessor.hetero_graph
+            )
+            probability = torch.sigmoid(torch.tensor(score)).item()
+
+            if probability > confidence_threshold:
+                print(f"Принят триплет: {head} - [{relation}] -> {tail} (уверенность: {probability:.4f})")
+                filtered_triplets.append((head, relation, tail, head_feature, tail_feature))
+
+                temp_graph.add_new_triplet(
+                    head=head,
+                    relation=relation,
+                    tail=tail,
+                    check_synonyms=True,
+                    head_feature=head_feature.lower() if head_feature else "default",
+                    tail_feature=tail_feature.lower() if tail_feature else "default"
+                )
+            else:
+                print(f"Отклонен триплет: {head} - [{relation}] -> {tail} (уверенность: {probability:.4f})")
+
+        if find_internal_links and filtered_triplets:
+            print("Поиск потенциальных внутренних связей между сущностями...")
+
+            temp_graph.add_loop_reversed_triplet()
+
+            temp_preprocessor = EmbeddingPreprocessor(temp_graph)
+            temp_preprocessor.preprocess(self.knowledge_graph_extractor.type_map.values())
+
+            temp_model = GraphNN.load_model(
+                model_path=self.model_path if hasattr(self, 'model_path') else "model_with_config.pt",
+                map_location=self.model.device,
+                preprocessor=temp_preprocessor
+            )
+
+            temp_evaluator = TripletEvaluator(temp_model)
+            potential_links = temp_evaluator.link_prediction_in_graph(
+                threshold=confidence_threshold,
+                top_k=8
+            )
+            for link in potential_links:
+                head, relation, tail = link['head'], link['relation'], link['tail']
+                probability = link['score']
+
+                if not temp_graph.has_triplet(head, relation, tail):
+                    head_node = temp_graph.find_node(head)
+                    tail_node = temp_graph.find_node(tail)
+
+                    if head_node and tail_node:
+                        print(
+                            f"Найдена внутренняя связь: {head} - [{relation}] -> {tail} (уверенность: {probability:.4f})")
+                        temp_graph.add_new_triplet(
+                            head=head,
+                            relation=relation,
+                            tail=tail,
+                            check_synonyms=False,
+                            head_feature=head_node.feature,
+                            tail_feature=tail_node.feature
+                        )
+
+            self.graph = temp_graph
+
+            print(f"Итоговый граф содержит {len(self.graph.triplets)} триплетов")
+            self.graph.print()
+
+        return self.graph
 
     def find_internal_links(self):
         evaluator = TripletEvaluator(self.model)
@@ -165,7 +263,7 @@ class AppFacade:
         self.graph_trainer = GraphTrainer.load_model_for_training(self.preprocessor, model_path, map_location=map_location, train_loader=train_loader, val_loader=val_loader)
         self.model = self.graph_trainer.model
 
-    def finetune_model(self, new_triplets, confidence_threshold=0.75) -> dict:
+    def finetune_model(self, new_triplets, confidence_threshold=0.65) -> dict:
         if self.graph_trainer is None:
             self.load_model_for_finetune()
         updated_graph = self.graph.clone()
@@ -210,7 +308,7 @@ class AppFacade:
             return {}
 
         updated_preprocessor = EmbeddingPreprocessor(updated_graph)
-        updated_preprocessor.preprocess()
+        updated_preprocessor.preprocess(self.knowledge_graph_extractor.type_map.values())
         updated_train_loader, updated_test_loader, updated_val_loader = create_dataloader(updated_preprocessor, batch_size=64)
 
         new_model = GraphNN(
@@ -230,7 +328,7 @@ class AppFacade:
         test_auc = trainer.evaluate(updated_val_loader)
         print(f"Финальный Test AUC после дообучения: {test_auc:.4f}")
 
-        trainer.save_with_config("model_finetuned.pt", "graph_finetuned.json")
+        trainer.save_with_config("model_finetune.pt", "graph_finetune.json")
 
         self.model = new_model
         self.graph = updated_graph
