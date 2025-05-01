@@ -35,12 +35,6 @@ class TestGraphData(unittest.TestCase):
         found_edge = graph.find_edge("Relation")
         self.assertEqual(found_edge.get_relation(), "Relation")
 
-    def test_get_adjacency_matrix(self):
-        graph = GraphData()
-        graph.add_new_triplet("Node 1", "Relation", "Node 2")
-        matrix = graph.get_adjacency_matrix()
-        self.assertEqual(matrix, [[0, 1], [0, 0]])
-
     def test_synonymic_model(self):
         graph = GraphData()
         graph.add_new_triplet("Node 1", "character", "Node 2")

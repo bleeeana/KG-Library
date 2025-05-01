@@ -3,31 +3,19 @@ from kg_library.models import GraphNN, EmbeddingPreprocessor
 import torch
 import torch.nn.functional as F
 
-
 class TripletEvaluator:
     def __init__(self, model: GraphNN):
-        self.model = model
-        self.device = model.device
+        self.model : GraphNN = model
+        self.device_string = f"cuda:{self.model.device.index}" if model.device.type == 'cuda' else self.model.device.type
         self.preprocessor: EmbeddingPreprocessor = model.preprocessor
 
     @torch.no_grad()
-    def get_new_entity_embedding(self, entity_type):
-        same_type_ids = []
-
-        if entity_type is not None:
-            for node_name, node_id in self.preprocessor.entity_id.items():
-                node_type = None
-                for node in self.preprocessor.graph.nodes:
-                    if node.name == node_name:
-                        node_type = node.feature
-                        break
-
-                if node_type == entity_type:
-                    same_type_ids.append(node_id)
+    def get_new_entity_embedding(self, entity_type) -> torch.Tensor:
+        same_type_ids = self.preprocessor.entities_by_type.get(entity_type, None)
 
         if same_type_ids:
             type_embeddings = self.model.get_entity_embedding(
-                torch.tensor(same_type_ids).to(self.device)
+                torch.tensor(same_type_ids).to(self.device_string)
             )
             embedding = type_embeddings.mean(dim=0, keepdim=True)
         else:
@@ -39,32 +27,20 @@ class TripletEvaluator:
 
     @torch.no_grad()
     def score_new_triplet(self, graph : HeteroData, head_feature: str, tail_feature: str, head_name: str, tail_name: str, relation: str,
-                          head_id: int = None, tail_id: int = None, add_to_graph: bool = False):
+                          head_id: int = None, tail_id: int = None, add_to_graph: bool = False, feature_names: list[str] = None):
         if graph is None:
-            graph = self.preprocessor.hetero_graph.to(self.device)
+            graph = self.preprocessor.hetero_graph.to(self.device_string)
 
         with torch.no_grad():
             embeddings = self.model(graph)
             entity_embeddings = embeddings["entity"]
 
-        if head_id is not None:
-            head_embedding = entity_embeddings[head_id].unsqueeze(0)
-        else:
-            projected_head = self.model.feature_proj(self.preprocessor.get_feature_tensor(head_feature).to(self.device))
-
-            head_entity_emb = self.get_new_entity_embedding(entity_type=head_feature)
-            head_embedding = 0.6 * projected_head + 0.4 * head_entity_emb
-
-        if tail_id is not None:
-            tail_embedding = entity_embeddings[tail_id].unsqueeze(0)
-        else:
-            projected_tail = self.model.feature_proj(self.preprocessor.get_feature_tensor(tail_feature).to(self.device))
-            tail_entity_emb = self.get_new_entity_embedding(entity_type=tail_feature)
-            tail_embedding = 0.6 * projected_tail + 0.4 * tail_entity_emb
+        head_embedding = self.get_final_embedding(entity_embeddings, head_feature, head_id)
+        tail_embedding = self.get_final_embedding(entity_embeddings, tail_feature, tail_id)
 
         if relation in self.preprocessor.relation_id:
             relation_id = self.preprocessor.relation_id[relation]
-            relation_emb = self.model.get_relation_embedding(torch.tensor([relation_id]).to(self.device))
+            relation_emb = self.model.get_relation_embedding(torch.tensor([relation_id]).to(self.device_string))
         else:
             relation_emb = F.normalize(
                 self.model.relation_embedding.weight.data.mean(dim=0, keepdim=True), p=2, dim=1
@@ -92,89 +68,77 @@ class TripletEvaluator:
                     added_triplet = triplet
                     break
 
-            self.preprocessor.preprocess()
+            self.preprocessor.preprocess(feature_names)
             self.model.preprocessor = self.preprocessor
             return score_value, added_triplet
 
         return score_value
 
-    @torch.no_grad()
-    def score_triplet_from_graph(self, head_idx, tail_idx, relation_id):
-        self.model.eval()
-        device = self.device
-        graph = self.preprocessor.hetero_graph.to(device)
-        embeddings = self.model(graph)
-        entity_embeddings = embeddings["entity"]
 
-        head_embedding = entity_embeddings[head_idx].unsqueeze(0)
-        tail_embedding = entity_embeddings[tail_idx].unsqueeze(0)
-        relation_emb = self.model.get_relation_embedding(torch.tensor([relation_id]).to(device))
-
-        score = self.model.score_function(head_embedding, tail_embedding, relation_emb)
-        return torch.sigmoid(score).item()
+    def get_final_embedding(self, embeddings, feature, _id):
+        if _id is not None:
+            embedding = embeddings[_id].unsqueeze(0)
+        else:
+            projected_tail = self.model.feature_proj(
+                self.preprocessor.get_feature_tensor(feature).to(self.device_string))
+            entity_embedding = self.get_new_entity_embedding(entity_type=feature)
+            embedding = 0.6 * projected_tail + 0.4 * entity_embedding
+        return embedding
 
     @torch.no_grad()
     def link_prediction_in_graph(self, threshold=0.75, top_k=10, batch_size=128):
-
-        id_to_entity = {index: entity for entity, index in self.preprocessor.entity_id.items()}
-        device = self.device
-        possible_links = []
-
+        self.model.eval()
+        device = self.device_string
         graph = self.preprocessor.hetero_graph.to(device)
-        embeddings = self.model(graph)
-        entity_embeddings = embeddings["entity"]
+        entity_embeddings = self.model(graph)["entity"]
         num_entities = entity_embeddings.size(0)
+
+        valid_relations = [
+            (name, idx) for name, idx in self.preprocessor.relation_id.items()
+            if name != "loop" and not name.endswith(":reversed")
+        ]
+
+        possible_links = []
 
         for head_idx in range(num_entities):
             head_embedding = entity_embeddings[head_idx].unsqueeze(0)
+            valid_tail_indices = torch.tensor(
+                [i for i in range(num_entities) if i != head_idx], device=device
+            )
 
-            for rel_name, rel_idx in self.preprocessor.relation_id.items():
-                if rel_name == "loop" or  rel_name.endswith(":reversed"):
-                    continue
+            for rel_name, rel_idx in valid_relations:
                 relation_emb = self.model.get_relation_embedding(
-                    torch.tensor([rel_idx]).to(self.device))
+                    torch.tensor([rel_idx], device=device)
+                )
 
-                valid_indices = [i for i in range(num_entities) if i != head_idx]
+                all_scores = torch.tensor([], device=device)
 
-                all_scores = []
-                for start_idx in range(0, len(valid_indices), batch_size):
-                    batch_indices = valid_indices[start_idx:start_idx + batch_size]
-
+                for i in range(0, len(valid_tail_indices), batch_size):
+                    batch_indices = valid_tail_indices[i:i + batch_size]
                     batch_tail_embeddings = entity_embeddings[batch_indices]
 
-                    batch_heads = head_embedding.repeat(len(batch_indices), 1)
-                    batch_relations = relation_emb.repeat(len(batch_indices), 1)
+                    batch_scores = self.model.score_function(
+                        head_embedding.expand(len(batch_indices), -1),
+                        batch_tail_embeddings,
+                        relation_emb.expand(len(batch_indices), -1)
+                    )
+                    all_scores = torch.cat([all_scores, torch.sigmoid(batch_scores.squeeze())])
 
-                    batch_scores = self.model.score_function(batch_heads, batch_tail_embeddings, batch_relations)
-                    batch_scores = torch.sigmoid(batch_scores).squeeze()
+                mask = all_scores > threshold
+                if mask.any():
+                    filtered_scores = all_scores[mask]
+                    filtered_indices = valid_tail_indices[mask]
 
-                    all_scores.append((batch_scores, batch_indices))
+                    top_n = min(top_k, len(filtered_scores))
+                    top_scores, top_idxs = torch.topk(filtered_scores, top_n)
 
-                all_batch_scores = torch.cat([scores for scores, _ in all_scores])
-                all_batch_indices = [idx for _, indices in all_scores for idx in indices]
-
-                above_thresh_mask = all_batch_scores > threshold
-                if above_thresh_mask.any():
-                    above_thresh_scores = all_batch_scores[above_thresh_mask]
-                    above_thresh_indices = [all_batch_indices[i] for i, is_above in enumerate(above_thresh_mask) if
-                                            is_above]
-
-                    if len(above_thresh_scores) > top_k:
-                        top_scores, top_idx = torch.topk(above_thresh_scores, top_k)
-                        top_indices = [above_thresh_indices[i] for i in top_idx.tolist()]
-                        top_scores = top_scores.tolist()
-                    else:
-                        top_scores = above_thresh_scores.tolist()
-                        top_indices = above_thresh_indices
-
-                    for score, tail_idx in zip(top_scores, top_indices):
+                    for score, tail_idx in zip(top_scores.tolist(), filtered_indices[top_idxs].tolist()):
                         possible_links.append({
-                            'head': id_to_entity[head_idx],
-                            'relation': rel_name,
-                            'tail': id_to_entity[tail_idx],
+                            'head': self.preprocessor.graph.nodes[head_idx],
+                            'relation': self.preprocessor.graph.edges[rel_idx],
+                            'tail': self.preprocessor.graph.nodes[tail_idx],
                             'score': score
                         })
-                torch.cuda.empty_cache()
+            torch.cuda.empty_cache()
 
-        possible_links.sort(key=lambda x: x['score'], reverse=True)
-        return possible_links
+        return sorted(possible_links, key=lambda x: x['score'], reverse=True)

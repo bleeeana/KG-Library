@@ -22,7 +22,89 @@ class WikidataExtractor:
                 for author in parsed["authors"]:
                     if author["label"].lower().strip() not in char["label"].lower().strip():
                         parsed["characters"].append(char)
+        for author in parsed["authors"]:
+            author_id = author["id"].split("/")[-1]
+            author_info = self.get_author_info(author_id)
+            author.update({"details": author_info})
         return parsed
+
+    def get_author_info(self, author_id: str) -> dict:
+        query = f"""
+        SELECT ?property ?propertyLabel ?value ?valueLabel WHERE {{
+                  wd:{author_id} ?prop ?value .
+                  ?property wikibase:directClaim ?prop .
+
+                  # Интересующие нас свойства
+                  VALUES ?prop {{
+                    wdt:P19    # место рождения
+                    wdt:P20    # место смерти
+                    wdt:P569   # дата рождения
+                    wdt:P570   # дата смерти
+                    wdt:P27    # страна гражданства
+                    wdt:P106   # род занятий/профессия
+                    wdt:P21    # пол
+                    wdt:P69    # образование
+                    wdt:P463   # членство в организации
+                    wdt:P26    # супруг(а)
+                    wdt:P166   # награды
+                    wdt:P800   # известные работы
+                  }}
+
+                  SERVICE wikibase:label {{ 
+                    bd:serviceParam wikibase:language "en,ru,de,fr,es,it". 
+                    ?property rdfs:label ?propertyLabel .
+                    ?value rdfs:label ?valueLabel .
+                  }}
+                }}
+                ORDER BY ?propertyLabel ?valueLabel
+                """
+
+        results = self.execute_query(query)
+
+        author_info = {
+            "birth_place": [],
+            "death_place": [],
+            "birth_date": [],
+            "death_date": [],
+            "citizenship": [],
+            "occupation": [],
+            "gender": [],
+            "education": [],
+            "spouse": [],
+            "awards": [],
+            "notable_works": []
+        }
+
+        for item in results:
+            prop = item.get("property", {}).get("value", "")
+            value = {
+                "id": item.get("value", {}).get("value", ""),
+                "label": item.get("valueLabel", {}).get("value", "")
+            }
+            if "P19" in prop:
+                author_info["birth_place"].append(value)
+            elif "P20" in prop:
+                author_info["death_place"].append(value)
+            elif "P569" in prop:
+                author_info["birth_date"].append(value)
+            elif "P570" in prop:
+                author_info["death_date"].append(value)
+            elif "P27" in prop:
+                author_info["citizenship"].append(value)
+            elif "P106" in prop:
+                author_info["occupation"].append(value)
+            elif "P21" in prop:
+                author_info["gender"].append(value)
+            elif "P69" in prop:
+                author_info["education"].append(value)
+            elif "P26" in prop:
+                author_info["spouse"].append(value)
+            elif "P166" in prop:
+                author_info["awards"].append(value)
+            elif "P800" in prop:
+                author_info["notable_works"].append(value)
+
+        return author_info
 
 
     def build_query(self, title: str) -> str:
@@ -201,7 +283,61 @@ class WikidataExtractor:
         print("\nМеста действия:")
         for loc in info["locations"]:
             print(f"- {loc['label']} ({loc['id']})")
+        print("\nИнформация об авторах:")
+        for author in info["authors"]:
+            print(f"\n{author['label']}:")
+            details = author.get("details", {})
+
+            if details["birth_date"]:
+                birth_date = details["birth_date"][0]["label"]
+                print(f"  Дата рождения: {birth_date}")
+
+            if details["birth_place"]:
+                birth_places = ", ".join(place["label"] for place in details["birth_place"])
+                print(f"  Место рождения: {birth_places}")
+
+            if details["death_date"]:
+                death_date = details["death_date"][0]["label"]
+                print(f"  Дата смерти: {death_date}")
+
+            if details["death_place"]:
+                death_places = ", ".join(place["label"] for place in details["death_place"])
+                print(f"  Место смерти: {death_places}")
+
+            if details["citizenship"]:
+                citizenships = ", ".join(country["label"] for country in details["citizenship"])
+                print(f"  Гражданство: {citizenships}")
+
+            if details["occupation"]:
+                occupations = ", ".join(occ["label"] for occ in details["occupation"])
+                print(f"  Профессии: {occupations}")
+
+            if details["gender"]:
+                gender = details["gender"][0]["label"]
+                print(f"  Пол: {gender}")
+
+            if details["education"]:
+                education = ", ".join(edu["label"] for edu in details["education"])
+                print(f"  Образование: {education}")
+
+            if details["spouse"]:
+                spouses = ", ".join(spouse["label"] for spouse in details["spouse"])
+                print(f"  Супруг(а): {spouses}")
+
+            if details["awards"]:
+                awards = ", ".join(award["label"] for award in details["awards"][:5])  # Ограничиваем вывод наград
+                print(f"  Награды: {awards}")
+                if len(details["awards"]) > 5:
+                    print(f"    ... и еще {len(details['awards']) - 5} наград")
+
+            if details["notable_works"]:
+                works = ", ".join(
+                    work["label"] for work in details["notable_works"][:5])  # Ограничиваем вывод работ
+                print(f"  Известные работы: {works}")
+                if len(details["notable_works"]) > 5:
+                    print(f"    ... и еще {len(details['notable_works']) - 5} работ")
+
 
 if __name__ == "__main__":
     api = WikidataExtractor()
-    api.print("1984")
+    api.print("Anna Karenina")

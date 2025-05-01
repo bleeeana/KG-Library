@@ -2,16 +2,12 @@ from kg_library.common import NodeData
 
 class EdgeData:
     def __init__(self, relation : str):
-        self.__relation = relation
-        self.subject = None
-        self.object = None
+        self._relation = relation
+        self._subject = None
+        self._object = None
 
     def get_relation(self) -> str:
-        return self.__relation
+        return self._relation
 
-    def __str__(self):
-        return f"edge {self.__relation}"
-
-    def set_ends(self, head_node : NodeData, tail_node : NodeData):
-        self.subject = head_node
-        self.object = tail_node
+    def __str__(self) -> str:
+        return f"edge {self._relation}"

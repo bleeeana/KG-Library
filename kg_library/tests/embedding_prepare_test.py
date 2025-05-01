@@ -1,4 +1,6 @@
 import unittest
+
+from kg_library.common import GraphJSON
 from kg_library.models import EmbeddingPreprocessor
 from kg_library.models import create_dataloader
 from kg_library.utils import create_test_graph, create_mini_test_graph
@@ -6,16 +8,16 @@ from kg_library.utils import create_test_graph, create_mini_test_graph
 class EmbeddingPrepareTest(unittest.TestCase):
 
     def test_feature_matrix(self):
-        graph = create_test_graph()
+        graph = GraphJSON.load("test.json")
         preprocessor = EmbeddingPreprocessor(graph)
-        preprocessor.build_feature_matrix()
-        print(preprocessor.feature_matrix)
+        preprocessor.build_feature_matrix([])
+        print(preprocessor.feature_matrix.shape)
         self.assertIsNotNone(preprocessor.feature_matrix)
 
     def test_creating_leaf_tensor(self):
         graph = create_test_graph()
         preprocessor = EmbeddingPreprocessor(graph)
-        preprocessor.build_feature_matrix()
+        preprocessor.build_feature_matrix([])
         preprocessor.build_hetero_graph()
         print(preprocessor.hetero_graph.to_dict())
         print(preprocessor.hetero_graph.metadata())

@@ -28,18 +28,18 @@ class EdgeJSON:
 class GraphJSON:
     @staticmethod
     def to_json(graph : GraphData) -> str:
-        dict = {
+        dict_from_json = {
             "nodes" : [NodeJSON.to_json(node) for node in graph.nodes],
             "edges" : [EdgeJSON.to_json(edge) for edge in graph.edges],
             "triplets" : []
         }
         for triplet in graph.triplets:
-            dict["triplets"].append({
+            dict_from_json["triplets"].append({
                 "head" : graph.nodes.index(triplet[0]),
                 "relation" : graph.edges.index(triplet[1]),
                 "tail" : graph.nodes.index(triplet[2])
             })
-        return json.dumps(dict, indent=2)
+        return json.dumps(dict_from_json, indent=2)
 
     @staticmethod
     def from_json( json_dict : str) -> GraphData:
@@ -53,10 +53,8 @@ class GraphJSON:
             head = graph.nodes[triplet_dict["head"]]
             relation = graph.edges[triplet_dict["relation"]]
             tail = graph.nodes[triplet_dict["tail"]]
-            head.add_output(relation)
-            tail.add_input(relation)
-            relation.set_ends(head, tail)
-            graph.triplets.append((head, relation, tail))
+            graph.add_new_triplet_direct(head, relation, tail)
+        graph.print()
         return graph
 
     @staticmethod

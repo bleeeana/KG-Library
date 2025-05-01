@@ -4,7 +4,6 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from sklearn.metrics import roc_auc_score
 import os, datetime
 from kg_library.models import EarlyStoppingController
-from kg_library.common import GraphJSON
 import torch.nn.functional as F
 import torch
 from kg_library.models import EmbeddingPreprocessor, GraphNN
@@ -19,7 +18,13 @@ class GraphTrainer:
         self.current_epoch = 0
         log_dir = os.path.join("runs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
         self.writer = SummaryWriter(log_dir=log_dir)
-        self.early_stopper = EarlyStoppingController()
+        self.early_stopper = EarlyStoppingController(
+            monitor_scores={
+                "auc": {"mode": "max", "min_delta": 0.001},
+                "loss": {"mode": "min", "min_delta": 0.001}
+            },
+            patience=5
+        )
         self.optimizer = AdamW(model.parameters(), lr=lr, weight_decay=1e-5)
         self.scheduler = ReduceLROnPlateau(self.optimizer, mode='max', patience=patience, factor=0.5)
 
@@ -28,7 +33,7 @@ class GraphTrainer:
         print(f"tensorboard --logdir={os.path.abspath('runs')}")
         print("Then open http://localhost:6006 in your browser")
 
-    def train(self):
+    def train(self, save: bool = True):
         for epoch in range(self.epochs):
             self.model.train()
             epoch_loss = 0.0
@@ -69,7 +74,7 @@ class GraphTrainer:
             train_labels = torch.cat(all_labels)
             train_auc = roc_auc_score(train_labels, train_scores.sigmoid())
 
-            val_auc = self.evaluate(self.val_loader)
+            val_auc, val_loss = self.evaluate(self.val_loader)
             self.scheduler.step(val_auc)
 
             self.writer.add_scalar("Loss/train", epoch_loss / len(self.train_loader), epoch)
@@ -80,23 +85,63 @@ class GraphTrainer:
             print(f"Epoch {epoch:03d} | Loss: {epoch_loss / len(self.train_loader):.4f} | "
                   f"Train AUC: {train_auc:.4f} | Val AUC: {val_auc:.4f}")
 
-            self.early_stopper(val_auc, self.model)
+            self.early_stopper(
+                {"auc": val_auc, "loss": val_loss},
+                self.model
+            )
 
             if self.early_stopper.early_stop:
                 print("Early stopping, saving the best configuration")
                 self.early_stopper.restore_best_state(self.model)
-                self.save_with_config()
+                if save:
+                    self.save_with_config()
                 break
 
             self.current_epoch += 1
-            self.save_with_config()
+            if save:
+                self.save_with_config()
             print("Model saved")
 
         self.writer.close()
 
+    def train_epoch(self, all_labels, all_scores, epoch, epoch_loss) -> float:
+        for batch in self.train_loader:
+            torch.cuda.empty_cache()
+            batch = batch.to(self.device)
+            graph = self.model.preprocessor.create_hetero_from_batch(batch)
+            output = self.model(graph)
+
+            h = output["entity"][batch.head.squeeze()]
+            t = output["entity"][batch.tail.squeeze()]
+            r = self.model.get_relation_embedding(batch.edge_attr.squeeze())
+
+            scores = self.model.score_function(h, t, r)
+            loss = F.binary_cross_entropy_with_logits(scores, batch.y)
+
+            self.optimizer.zero_grad()
+            loss.backward()
+
+            total_grad_norm = 0.0
+            for param in self.model.parameters():
+                if param.grad is not None:
+                    total_grad_norm += param.grad.data.norm(2).item() ** 2
+            total_grad_norm = total_grad_norm ** 0.5
+            self.writer.add_scalar("grad_norms/total", total_grad_norm, epoch)
+
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+            self.optimizer.step()
+
+            epoch_loss += loss.item()
+            all_scores.append(scores.detach().cpu())
+            all_labels.append(batch.y.cpu())
+        return epoch_loss
+
     def evaluate(self, loader):
         self.model.eval()
         scores_list, labels_list = [], []
+        total_loss = 0.0
+        total_batches = 0
+
         with torch.no_grad():
             for batch in loader:
                 batch = batch.to(self.device)
@@ -108,12 +153,20 @@ class GraphTrainer:
                 r = self.model.get_relation_embedding(batch.edge_attr.squeeze())
 
                 scores = self.model.score_function(h, t, r)
+                loss = F.binary_cross_entropy_with_logits(scores, batch.y)
+
+                total_loss += loss.item()
+                total_batches += 1
+
                 scores_list.append(scores.sigmoid().cpu())
                 labels_list.append(batch.y.cpu())
 
         scores = torch.cat(scores_list)
         labels = torch.cat(labels_list)
-        return roc_auc_score(labels, scores)
+        val_auc = roc_auc_score(labels, scores)
+        val_loss = total_loss / total_batches
+
+        return val_auc, val_loss
 
     def save_with_config(self, model_path="model_with_config.pt", graph_path="test.json"):
         torch.save({

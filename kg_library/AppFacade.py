@@ -21,8 +21,7 @@ class AppFacade:
 
     def input_base_data(self):
         for i in range(self.size):
-            title = self.dataset['Book title'][i]
-            self.import_wikidata_information(self.base_information_extractor.get_book_info(title), title)
+            print(i)
             title = self.dataset['Book title'][i]
             print(title)
             author = self.dataset['Author'][i]
@@ -40,13 +39,14 @@ class AppFacade:
             for genre in genres:
                 self.graph.add_new_triplet(title, "has_genre", genre, check_synonyms=False, head_feature="title",
                                                tail_feature="genre")
+            self.import_wikidata_information(self.base_information_extractor.get_book_info(title), title)
             self.extract_plot_summary(i)
         self.graph.add_loop_reversed_triplet()
         self.graph.print()
         #self.graph.fill_database(self.neo4j_connection)
 
     def import_wikidata_information(self, info: dict[str, list[dict]], title):
-        print(info)
+        print(info, end="\n\n")
         '''
         book_info = {
             "authors": [],
@@ -60,6 +60,7 @@ class AppFacade:
         for author in info["authors"]:
             self.graph.add_new_triplet(title, "author", author["label"], check_synonyms=True, head_feature="title",
                                        tail_feature="person")
+            self.import_author_information(author, title)
 
         for publication_date in info["publication_dates"]:
             self.graph.add_new_triplet(title, "published_in", publication_date["label"], check_synonyms=True,
@@ -80,6 +81,55 @@ class AppFacade:
         for location in info["locations"]:
             self.graph.add_new_triplet(title, "location", location["label"], check_synonyms=False, head_feature="title",
                                        tail_feature="location")
+
+    def import_author_information(self, author, title):
+        details = author.get("details", {})
+        author_name = author["label"]
+        if details.get("birth_date"):
+            birth_date = details["birth_date"][0]["label"]
+            self.graph.add_new_triplet(author_name, "born_on", birth_date, check_synonyms=True,
+                                       head_feature="person", tail_feature="date")
+        if details.get("birth_place"):
+            for place in details["birth_place"]:
+                self.graph.add_new_triplet(author_name, "born_in", place["label"], check_synonyms=True,
+                                           head_feature="person", tail_feature="location")
+        if details.get("death_date"):
+            death_date = details["death_date"][0]["label"]
+            self.graph.add_new_triplet(author_name, "died_on", death_date, check_synonyms=True,
+                                       head_feature="person", tail_feature="date")
+        if details.get("death_place"):
+            for place in details["death_place"]:
+                self.graph.add_new_triplet(author_name, "died_in", place["label"], check_synonyms=True,
+                                           head_feature="person", tail_feature="location")
+        if details.get("citizenship"):
+            for country in details["citizenship"]:
+                self.graph.add_new_triplet(author_name, "has_citizenship", country["label"], check_synonyms=True,
+                                           head_feature="person", tail_feature="country")
+        if details.get("gender"):
+            gender = details["gender"][0]["label"]
+            self.graph.add_new_triplet(author_name, "has_gender", gender, check_synonyms=True,
+                                       head_feature="person", tail_feature="concept")
+        if details.get("occupation"):
+            for occupation in details["occupation"]:
+                self.graph.add_new_triplet(author_name, "has_occupation", occupation["label"], check_synonyms=True,
+                                           head_feature="person", tail_feature="occupation")
+        if details.get("education"):
+            for education in details["education"]:
+                self.graph.add_new_triplet(author_name, "educated_at", education["label"], check_synonyms=True,
+                                           head_feature="person", tail_feature="organization")
+        if details.get("awards"):
+            for award in details["awards"]:
+                self.graph.add_new_triplet(author_name, "received_award", award["label"], check_synonyms=True,
+                                           head_feature="person", tail_feature="award")
+        if details.get("spouse"):
+            for spouse in details["spouse"]:
+                self.graph.add_new_triplet(author_name, "married_to", spouse["label"], check_synonyms=True,
+                                           head_feature="person", tail_feature="person")
+        if details.get("notable_works"):
+            for work in details["notable_works"]:
+                if work["label"] != title:
+                    self.graph.add_new_triplet(author_name, "created", work["label"], check_synonyms=True,
+                                               head_feature="person", tail_feature="title")
 
     def extract_plot_summary(self, index):
         summary = self.dataset["Summarized Plot Summary"][index]
@@ -104,11 +154,15 @@ class AppFacade:
         else:
             return set()
 
-    def generate_graph_for_learning(self, load_model_from_file=False, load_triplets_from_file=False):
+    def generate_graph_for_learning(self, load_model_from_file=False, load_triplets_from_file=False, load_graph=False, graph_path="test.json"):
         if load_model_from_file:
             self.load_model_for_finetune()
         else:
-            self.input_base_data()
+            if load_graph:
+                self.graph = GraphJSON.load(graph_path)
+            else:
+                self.input_base_data()
+                GraphJSON.save(self.graph, "base_graph.json")
             self.learning_process()
         #self.find_internal_links()
         extra_triplets = set()
@@ -123,12 +177,11 @@ class AppFacade:
         self.finetune_model(extra_triplets)
 
     def learning_process(self):
-        self.generate_graph_for_learning()
         self.preprocessor = EmbeddingPreprocessor(self.graph)
         self.preprocessor.preprocess(self.knowledge_graph_extractor.type_map.values())
 
         self.model = GraphNN(self.preprocessor)
-        train_loader, test_loader, val_loader = create_dataloader(self.preprocessor, batch_size=128)
+        train_loader, test_loader, val_loader = create_dataloader(self.preprocessor, batch_size=64)
         self.graph_trainer = GraphTrainer(self.model, train_loader, val_loader, epochs=10, lr=0.0005)
         self.graph_trainer.train()
         val_auc = self.graph_trainer.evaluate(self.graph_trainer.val_loader)
@@ -175,7 +228,8 @@ class AppFacade:
                 relation=relation,
                 head_id=head_id,
                 tail_id=tail_id,
-                graph=self.preprocessor.hetero_graph
+                graph=self.preprocessor.hetero_graph,
+                feature_names=self.knowledge_graph_extractor.type_map.values()
             )
             probability = torch.sigmoid(torch.tensor(score)).item()
 
@@ -202,49 +256,39 @@ class AppFacade:
             temp_preprocessor = EmbeddingPreprocessor(temp_graph)
             temp_preprocessor.preprocess(self.knowledge_graph_extractor.type_map.values())
 
-            temp_model = GraphNN.load_model(
-                model_path=self.model_path if hasattr(self, 'model_path') else "model_with_config.pt",
-                map_location=self.model.device,
-                preprocessor=temp_preprocessor
+            temp_model = GraphNN(
+                preprocessor=temp_preprocessor,
+                hidden_dim=self.model.get_config()["hidden_dim"],
+                num_layers=self.model.get_config()["num_layers"],
+                dropout=self.model.get_config()["dropout"]
             )
 
-            temp_evaluator = TripletEvaluator(temp_model)
-            potential_links = temp_evaluator.link_prediction_in_graph(
-                threshold=confidence_threshold,
-                top_k=8
-            )
-            for link in potential_links:
-                head, relation, tail = link['head'], link['relation'], link['tail']
-                probability = link['score']
-
-                if not temp_graph.has_triplet(head, relation, tail):
-                    head_node = temp_graph.find_node(head)
-                    tail_node = temp_graph.find_node(tail)
-
-                    if head_node and tail_node:
-                        print(
-                            f"Найдена внутренняя связь: {head} - [{relation}] -> {tail} (уверенность: {probability:.4f})")
-                        temp_graph.add_new_triplet(
-                            head=head,
-                            relation=relation,
-                            tail=tail,
-                            check_synonyms=False,
-                            head_feature=head_node.feature,
-                            tail_feature=tail_node.feature
-                        )
-
+            temp_model.transfer_weights(self.model, self.preprocessor)
+            self.find_internal_links(confidence_threshold, temp_graph, temp_model)
             self.graph = temp_graph
-
             print(f"Итоговый граф содержит {len(self.graph.triplets)} триплетов")
             self.graph.print()
 
         return self.graph
 
-    def find_internal_links(self):
-        evaluator = TripletEvaluator(self.model)
-        print("Internal links:")
-        result = evaluator.link_prediction_in_graph()
-        print(result, end='\n\n')
+    def find_internal_links(self, confidence_threshold, graph, model):
+        temp_evaluator = TripletEvaluator(model)
+        potential_links = temp_evaluator.link_prediction_in_graph(
+            threshold=confidence_threshold,
+            top_k=10
+        )
+        for link in potential_links:
+            head, relation, tail = link['head'], link['relation'], link['tail']
+            probability = link['score']
+
+            if not graph.has_triplet_direct(head, relation, tail):
+                print(
+                    f"Найдена внутренняя связь: {head} - [{relation}] -> {tail} (уверенность: {probability:.4f})")
+                graph.add_new_triplet_direct(
+                    head=head,
+                    relation=relation,
+                    tail=tail,
+                )
 
     def load_model(self, model_path="model.pt", map_location='cuda'):
         checkpoint = torch.load(model_path, map_location=map_location)
@@ -285,7 +329,8 @@ class AppFacade:
                 relation=relation,
                 head_id=head_id,
                 tail_id=tail_id,
-                graph=self.preprocessor.hetero_graph
+                graph=self.preprocessor.hetero_graph,
+                feature_names=self.knowledge_graph_extractor.type_map.values()
             )
 
             probability = torch.sigmoid(torch.tensor(score)).item()
@@ -318,15 +363,14 @@ class AppFacade:
             dropout=self.model.get_config()["dropout"]
         )
 
-        self._transfer_weights(self.model, new_model, updated_preprocessor)
-
-        trainer = GraphTrainer(new_model, updated_train_loader, updated_val_loader, epochs=15)
+        new_model.transfer_weights(self.model, self.preprocessor)
+        trainer = GraphTrainer(new_model, updated_train_loader, updated_val_loader, epochs=20)
 
         print(f"Начинаем дообучение на {added_triplets} новых триплетах...")
-        best_auc = trainer.train()
+        trainer.train()
 
-        test_auc = trainer.evaluate(updated_val_loader)
-        print(f"Финальный Test AUC после дообучения: {test_auc:.4f}")
+        val_auc = trainer.evaluate(updated_val_loader)
+        print(f"Финальный Val AUC после дообучения: {val_auc:.4f}")
 
         trainer.save_with_config("model_finetune.pt", "graph_finetune.json")
 
@@ -336,27 +380,5 @@ class AppFacade:
 
         return {
             "added_triplets": added_triplets,
-            "final_val_auc": best_auc,
-            "final_test_auc": test_auc
+            "val_auc": val_auc
         }
-
-    def _transfer_weights(self, model, new_model, updated_preprocessor):
-        with torch.no_grad():
-            for entity, old_id in model.preprocessor.entity_id.items():
-                if entity in updated_preprocessor.entity_id:
-                    new_id = updated_preprocessor.entity_id[entity]
-                    new_model.entity_embedding.weight[new_id] = model.entity_embedding.weight[old_id]
-
-            for relation, old_id in model.preprocessor.relation_id.items():
-                if relation in updated_preprocessor.relation_id:
-                    new_id = updated_preprocessor.relation_id[relation]
-                    new_model.relation_embedding.weight[new_id] = model.relation_embedding.weight[old_id]
-
-            for name, param in model.named_parameters():
-                if "embedding" not in name:
-                    try:
-                        new_param = new_model.get_parameter(name)
-                        if param.shape == new_param.shape:
-                            new_param.copy_(param)
-                    except Exception:
-                        continue

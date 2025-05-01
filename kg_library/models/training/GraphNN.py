@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.data import HeteroData
+# noinspection PyProtectedMember
 from torch_geometric.nn import HeteroConv, GATv2Conv
 from kg_library import get_config
 from kg_library.models import EmbeddingPreprocessor
@@ -9,8 +10,8 @@ from kg_library.models import EmbeddingPreprocessor
 class GraphNN(nn.Module):
     def __init__(self, preprocessor : EmbeddingPreprocessor, hidden_dim=get_config()["hidden_dim"], num_layers=3, dropout=0.3):
         super().__init__()
-        self.preprocessor = preprocessor
-        self.device = preprocessor.device
+        self.preprocessor : EmbeddingPreprocessor = preprocessor
+        self.device : torch.device = preprocessor.device
         self.num_layers = num_layers
 
         num_entities = len(preprocessor.entity_id) + 1
@@ -29,7 +30,7 @@ class GraphNN(nn.Module):
         self.skip_weights = nn.Parameter(torch.ones(num_layers))
         self.gamma = nn.Parameter(torch.tensor(10.0))
 
-        self.convs = nn.ModuleList([
+        self.layers = nn.ModuleList([
             HeteroConv({
                 edge_type: GATv2Conv(
                     (-1, -1),
@@ -54,7 +55,7 @@ class GraphNN(nn.Module):
         x = {"entity": 0.6 * node_features + 0.4 * node_embeddings}
         x_initial = x.copy()
 
-        for i, conv in enumerate(self.convs):
+        for i, conv in enumerate(self.layers):
             x_updated = conv(x, graph.edge_index_dict)
             alpha = torch.sigmoid(self.skip_weights[i])
             x = {
@@ -89,3 +90,43 @@ class GraphNN(nn.Module):
         model.eval()
         model.to(preprocessor.device)
         return model
+
+    def transfer_weights(self, source_model, source_preprocessor):
+        with torch.no_grad():
+            for entity, old_id in source_preprocessor.entity_id.items():
+                if entity in self.preprocessor.entity_id:
+                    new_id = self.preprocessor.entity_id[entity]
+                    self.entity_embedding.weight[new_id] = source_model.entity_embedding.weight[old_id]
+
+            for entity, new_id in self.preprocessor.entity_id.items():
+                if entity not in source_preprocessor.entity_id:
+                    entity_type = self.preprocessor.graph.nodes[new_id].feature
+
+                    if entity_type in source_preprocessor.entities_by_type and source_preprocessor.entities_by_type[entity_type]:
+                        type_ids = source_preprocessor.entities_by_type[entity_type]
+                        type_embeddings = source_model.entity_embedding.weight[type_ids]
+                        avg_embedding = type_embeddings.mean(dim=0)
+                    else:
+                        avg_embedding = source_model.entity_embedding.weight.data.mean(dim=0)
+
+                    noise = torch.randn_like(avg_embedding) * 0.01
+                    self.entity_embedding.weight[new_id] = F.normalize(avg_embedding + noise, p=2, dim=0)
+
+            for relation, old_id in source_preprocessor.relation_id.items():
+                if relation in self.preprocessor.relation_id:
+                    new_id = self.preprocessor.relation_id[relation]
+                    self.relation_embedding.weight[new_id] = source_model.relation_embedding.weight[old_id]
+
+            for relation, new_id in self.preprocessor.relation_id.items():
+                if relation not in source_preprocessor.relation_id:
+                    base_relation = relation.split(':')[0] if ':reversed' in relation else relation
+
+                    if base_relation in source_preprocessor.relation_id:
+                        base_id = source_preprocessor.relation_id[base_relation]
+                        base_embedding = source_model.relation_embedding.weight[base_id]
+                        noise = torch.randn_like(base_embedding) * 0.01
+                        self.relation_embedding.weight[new_id] = F.normalize(base_embedding + noise, p=2, dim=0)
+                    else:
+                        avg_embedding = source_model.relation_embedding.weight.data.mean(dim=0)
+                        noise = torch.randn_like(avg_embedding) * 0.01
+                        self.relation_embedding.weight[new_id] = F.normalize(avg_embedding + noise, p=2, dim=0)

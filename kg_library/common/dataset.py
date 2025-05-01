@@ -1,5 +1,4 @@
 import pandas as pd
-import os
 from datasets import load_dataset
 from kg_library import get_config
 

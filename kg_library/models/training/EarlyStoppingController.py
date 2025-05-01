@@ -1,36 +1,53 @@
 class EarlyStoppingController:
-    def __init__(self, patience=8, min_delta=0.001, mode='max', verbose=True):
+    def __init__(self, monitor_scores, patience=5, verbose=True):
+        self.monitor_scores = monitor_scores
         self.patience = patience
-        self.min_delta = min_delta
-        self.mode = mode
         self.verbose = verbose
+        self.best_scores = {metric: None for metric in monitor_scores}
         self.counter = 0
-        self.best_score = None
         self.early_stop = False
         self.best_state = None
 
-    def __call__(self, score, model):
-        if self.best_score is None:
-            self.best_score = score
-            self.best_state = model.state_dict()
-        elif self.has_improved(score):
+    def __call__(self, current_scores: dict, model):
+        improved = False
+
+        for metric, config in self.monitor_scores.items():
+            current = current_scores.get(metric)
+            if current is None:
+                raise ValueError(f"Metric '{metric}' not found in current_scores")
+
+            best = self.best_scores[metric]
+            mode = config.get("mode", "max")
+            min_delta = config.get("min_delta", 0.0)
+
+            if best is None:
+                self.best_scores[metric] = current
+                improved = True
+            elif self._has_improved(current, best, mode, min_delta):
+                if self.verbose:
+                    print(f"{metric} improved from {best:.5f} to {current:.5f}")
+                self.best_scores[metric] = current
+                improved = True
+
+        if improved:
             self.best_state = model.state_dict()
             self.counter = 0
-            if self.verbose:
-                print(f"Validation score improved from {self.best_score} to {score}")
-            self.best_score = score
         else:
             self.counter += 1
+            if self.verbose:
+                print(f"No improvement. Early stop counter: {self.counter}/{self.patience}")
             if self.counter >= self.patience:
-                if self.verbose:
-                    print(f"Early stopping triggered after {self.counter} epochs")
                 self.early_stop = True
+                if self.verbose:
+                    print("Early stopping triggered!")
 
-    def has_improved(self, score):
-        if self.mode == 'max':
-            return score > self.best_score + self.min_delta
+    def _has_improved(self, current, best, mode, min_delta):
+        if mode == "max":
+            return current > best + min_delta
+        elif mode == "min":
+            return current < best - min_delta
         else:
-            return score < self.best_score - self.min_delta
+            raise ValueError(f"Invalid mode '{mode}'. Use 'max' or 'min'.")
 
     def restore_best_state(self, model):
         if self.best_state is not None:

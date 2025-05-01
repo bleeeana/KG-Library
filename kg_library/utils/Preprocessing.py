@@ -1,7 +1,6 @@
 from typing import List
-import spacy, coreferee, pysbd, re
+import spacy, pysbd, re
 from spacy.language import Doc
-from kg_library.common import data_frame
 
 class Preprocessing:
     def __init__(self, model_name = 'en_core_web_lg'):
@@ -14,38 +13,34 @@ class Preprocessing:
             pass
         self.segmenter = pysbd.Segmenter(language='en', clean=False)
 
-    def __cleaning(self, text: str) -> str:
-        clean_text = text.replace("“", '"').replace("”", '"')
-        clean_text = re.sub(r'\s+', ' ', clean_text).strip()
-        return clean_text
-
-    def __coreferee_preprocessing(self, coref_doc: Doc) -> str:
-        resolved_text = ""
+    @staticmethod
+    def _coreferee_preprocessing(coref_doc: Doc) -> str:
+        resolved_tokens = []
         for token in coref_doc:
-            repres = coref_doc._.coref_chains.resolve(token)
-            #print(coref_doc._.coref_chains)
-            if repres:
-                resolved_text += " " + " and ".join(
-                    [t.text if t.ent_type_ == "" else [e.text for e in coref_doc.ents if t in e][0] for t in repres])
+            resolved_parts_list = coref_doc._.coref_chains.resolve(token)
+            if resolved_parts_list:
+                resolved_parts = []
+                for t in resolved_parts_list:
+                    if t.ent_type_ == "":
+                        resolved_parts.append(t.text)
+                    else:
+                        matching_entities = [e.text for e in coref_doc.ents if t in e]
+                        if matching_entities:
+                            resolved_parts.append(matching_entities[0])
+                        else:
+                            resolved_parts.append(t.text)
+                resolved_tokens.append(" and ".join(resolved_parts))
             else:
-                resolved_text += " " + token.text
+                resolved_tokens.append(token.text)
 
-        return resolved_text
+        return " ".join(resolved_tokens)
 
     def __split_text_to_segments(self, text: str) -> List[str]:
         return self.segmenter.segment(text)
 
     def preprocessing(self, text: str) -> List[str]:
-
-        resolved_text = self.__coreferee_preprocessing(self.nlp(text))
+        resolved_text = self._coreferee_preprocessing(self.nlp(text))
         print(resolved_text)
-        #splitted_text = self.__split_text_to_segments(resolved_text)
         clean_text = re.sub(r'\s+([.,!?])', r'\1', resolved_text)
-        splitted_text = self.__split_text_to_segments(clean_text)
-        return splitted_text
-
-    def __lemmatization(self, text: str) -> str:
-        if not text or not isinstance(text, str):
-            return ""
-        lemmatized_text = ' '.join([token.lemma_ for token in self.nlp(text)])
-        return lemmatized_text
+        split_text = self.__split_text_to_segments(clean_text)
+        return split_text

@@ -26,12 +26,12 @@ class KnowledgeGraphExtractor:
             "unk": "default"
         }
 
-    def __extract_triplets_typed(self, text: str):
+    def _extract_triplets_typed(self, text_element: str) -> list[dict]:
         triplets = []
         current = 'x'
         subject = relation = object_ = object_type = subject_type = ''
 
-        for token in text.replace("<s>", "").replace("<pad>", "").replace("</s>", "").replace("tp_XX", "").replace(
+        for token in text_element.replace("<s>", "").replace("<pad>", "").replace("</s>", "").replace("tp_XX", "").replace(
                 "__en__", "").split():
             if token == "<triplet>" or token == "<relation>":
                 current = 't'
@@ -72,9 +72,8 @@ class KnowledgeGraphExtractor:
 
         return triplets
 
-    def extract_from_text(self, text: str, num_beams=1, max_length=1024) -> list:
-        model_inputs = self.tokenizer(text, max_length=max_length, padding=True, truncation=True, return_tensors="pt")
-        #print(text)
+    def extract_from_text(self, text_element: str, num_beams=1, max_length=1024):
+        model_inputs = self.tokenizer(text_element, max_length=max_length, padding=True, truncation=True, return_tensors="pt")
         generated_tokens = self.model.generate(
             input_ids=model_inputs["input_ids"].to(self.model.device),
             attention_mask=model_inputs["attention_mask"].to(self.model.device),
@@ -86,19 +85,15 @@ class KnowledgeGraphExtractor:
         )
 
         decoded_preds = self.tokenizer.batch_decode(generated_tokens, skip_special_tokens=False)
-        all_triplets = []
         for sentence in decoded_preds:
-            #print("Decoded sentence:", sentence)
-            triplets = self.__extract_triplets_typed(sentence)
-            all_triplets.extend(triplets)
+            triplets = self._extract_triplets_typed(sentence)
             for t in triplets:
                 self.triplets.add((t['head'], t['type'], t['tail'], t['head_type'], t['tail_type']))  # для GNN
-        return all_triplets
 
-    def extract_from_full_text(self, text: str) -> set:
-        preprocessed_sentences = self.preprocessor.preprocessing(text)
+    def extract_from_full_text(self, full_text: str, num_beans = 1) -> set:
+        preprocessed_sentences = self.preprocessor.preprocessing(full_text)
         for sentence in preprocessed_sentences:
-            self.extract_from_text(sentence)
+            self.extract_from_text(sentence, num_beams=num_beans)
         return self.triplets
 
     def print_knowledge_graph(self):
@@ -106,8 +101,8 @@ class KnowledgeGraphExtractor:
         for head, relation, tail, head_type, tail_type in sorted(self.triplets):
             print(f"  ({head} - [{head_type}]) -[{relation}]-> ({tail} - [{tail_type}])")
 
-    def save_triplets_to_json(self):
-        with open("triplets.json", "w") as f:
+    def save_triplets_to_json(self, file_name="triplets.json"):
+        with open(file_name, "w") as f:
             json.dump(list(self.triplets), f)
 
     def load_triplets_from_json(self, file_name="triplets.json"):
