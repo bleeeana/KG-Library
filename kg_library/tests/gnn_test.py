@@ -47,7 +47,7 @@ class GNNTest(unittest.TestCase):
 
     def test_finetune(self):
         app_facade = AppFacade()
-        app_facade.generate_graph_for_learning(False, False, False)
+        app_facade.generate_graph_for_learning(False, False, True, "base_graph.json")
         self.assertEqual(1,1)
 
 if __name__ == '__main__':

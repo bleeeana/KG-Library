@@ -9,8 +9,8 @@ load_dotenv()
 NEO4J_URI = os.getenv("NEO4J_URI")
 NEO4J_AUTH = os.getenv("NEO4J_AUTH").split('/')
 EMAIL = os.getenv("EMAIL")
-EMBEDDING_DIM = 128
-HIDDEN_DIM = 128
+EMBEDDING_DIM = 64
+HIDDEN_DIM = 64
 __version__ = "0.1.0"
 def get_config():
     return {

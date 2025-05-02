@@ -37,7 +37,9 @@ class GraphNN(nn.Module):
                     hidden_dim,
                     heads=4,
                     concat=False,
-                    dropout=dropout
+                    dropout=dropout,
+                    add_self_loops=False,
+
                 ) for edge_type in preprocessor.hetero_graph.edge_types
             }, aggr='mean') for _ in range(num_layers)
         ])
@@ -53,13 +55,13 @@ class GraphNN(nn.Module):
         )
 
         x = {"entity": 0.6 * node_features + 0.4 * node_embeddings}
-        x_initial = x.copy()
+        x_initial = {k: v.clone() for k, v in x.items()}
 
         for i, conv in enumerate(self.layers):
             x_updated = conv(x, graph.edge_index_dict)
             alpha = torch.sigmoid(self.skip_weights[i])
             x = {
-                key: F.leaky_relu(self.dropout(val), 0.2) + alpha * x_initial[key]
+                key: (1 - alpha) * F.leaky_relu(self.dropout(val), 0.2) + alpha * x_initial[key]
                 for key, val in x_updated.items()
             }
 
