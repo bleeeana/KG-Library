@@ -54,7 +54,7 @@ class GraphJSON:
             relation = graph.edges[triplet_dict["relation"]]
             tail = graph.nodes[triplet_dict["tail"]]
             graph.add_new_triplet_direct(head, relation, tail)
-        graph.print()
+        #graph.print()
         return graph
 
     @staticmethod

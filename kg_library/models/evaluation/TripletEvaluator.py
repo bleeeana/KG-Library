@@ -6,7 +6,7 @@ import torch.nn.functional as F
 class TripletEvaluator:
     def __init__(self, model: GraphNN):
         self.model : GraphNN = model
-        self.device_string = f"cuda:{self.model.device.index}" if model.device.type == 'cuda' else self.model.device.type
+        self.device_string = str(self.model.device)
         self.preprocessor: EmbeddingPreprocessor = model.preprocessor
 
     @torch.no_grad()

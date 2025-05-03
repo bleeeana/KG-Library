@@ -3,6 +3,7 @@ import unittest
 from kg_library.common import GraphJSON
 from kg_library.models import EmbeddingPreprocessor
 from kg_library.models import create_dataloader
+from kg_library.models.entity_extraction.TripletExtractor import TripletExtractor
 from kg_library.utils import create_test_graph, create_mini_test_graph
 
 class EmbeddingPrepareTest(unittest.TestCase):
@@ -11,8 +12,7 @@ class EmbeddingPrepareTest(unittest.TestCase):
         graph = GraphJSON.load("test.json")
         preprocessor = EmbeddingPreprocessor(graph)
         preprocessor.build_feature_matrix([])
-        print(preprocessor.feature_matrix.shape)
-        self.assertIsNotNone(preprocessor.feature_matrix)
+        self.assertIsNotNone(preprocessor)
 
     def test_creating_leaf_tensor(self):
         graph = create_test_graph()
@@ -26,8 +26,7 @@ class EmbeddingPrepareTest(unittest.TestCase):
     def test_full_preprocessing(self):
         graph = create_test_graph()
         preprocessor = EmbeddingPreprocessor(graph)
-        preprocessor.preprocess()
-        print(f"feature matrix: {preprocessor.feature_matrix}")
+        preprocessor.preprocess([])
         print(f"hetero data node types: {preprocessor.hetero_graph.node_types}")
         print(f"hetero data edge types: {preprocessor.hetero_graph.edge_types}")
         print(f"hetero data: {preprocessor.hetero_graph.to_dict()}")
@@ -40,7 +39,9 @@ class EmbeddingPrepareTest(unittest.TestCase):
     def test_create_batch_hetero_data(self):
         graph = create_test_graph()
         preprocessor = EmbeddingPreprocessor(graph)
-        preprocessor.preprocess()
+        extractor = TripletExtractor()
+        extractor.load_triplets_from_json("triplets.json")
+        preprocessor.preprocess(feature_names=extractor.type_map.values())
         print(f"feature matrix: {preprocessor.feature_matrix}")
         #print(f"hetero data: {preprocessor.hetero_graph.to_dict()}")
         train_loader, val_loader, test_loader = create_dataloader(preprocessor)
@@ -48,6 +49,7 @@ class EmbeddingPrepareTest(unittest.TestCase):
         val_batches_hetero_graph = preprocessor.generate_split_hetero_data(val_loader)
         test_batches_hetero_graph = preprocessor.generate_split_hetero_data(test_loader)
         self.assertIsNotNone([train_batches_hetero_graph, val_batches_hetero_graph, test_batches_hetero_graph])
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -10,7 +10,7 @@ class EmbeddingPreprocessor:
     def __init__(self, graph: GraphData):
         self.graph = graph
         self.device : torch.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.feature_names : set[str] = set()
+        self.feature_names : list[str] = []
         self.entity_id : dict[str, int] = {}
         self.relation_id : dict[str, int] = {}
         self.feature_matrix : Optional[torch.Tensor] = None
@@ -34,21 +34,20 @@ class EmbeddingPreprocessor:
         feature[self.feature_names.index(feature_name)] = 1.0
         return feature
 
-    def expand_feature_names(self, feature_names: list[str]):
-        new_features = set(self.feature_names)
+
+    def expand_feature_names(self, feature_names):
         for feature_name in feature_names:
-            if feature_name:
-                new_features.add(feature_name.lower())
-        self.feature_names = sorted(new_features)
+            if feature_name and feature_name.lower() not in self.feature_names:
+                self.feature_names.append(feature_name.lower())
         print(f"Updated features: {self.feature_names}")
 
     def build_feature_matrix(self, feature_names : list[str]) -> None:
         self.entity_id = {entity.name: i for i, entity in enumerate(self.graph.nodes)}
         self.relation_id = {relation.get_relation(): i for i, relation in enumerate(self.graph.edges)}
         self.feature_names = sorted({node.feature.lower() for node in self.graph.nodes})
+        print(f"Detected features: {self.feature_names}")
         self.expand_feature_names(feature_names)
         feature_index = {name: i for i, name in enumerate(self.feature_names)}
-        print(f"Detected features: {self.feature_names}")
         features = np.zeros((len(self.graph.nodes), len(self.feature_names)), dtype=np.float32)
 
         for node in self.graph.nodes:
@@ -62,7 +61,6 @@ class EmbeddingPreprocessor:
         self.hetero_graph["entity"].x = self.feature_matrix
         edge_index_dict = {}
         for head, relation, tail in self.graph.triplets:
-            print(f"{head.name}({head.feature}) -> {relation.get_relation()} -> {tail.name}({tail.feature})")
             relation_name = relation.get_relation()
             h_id = self.entity_id[head.name]
             t_id = self.entity_id[tail.name]
@@ -207,7 +205,7 @@ class EmbeddingPreprocessor:
             hetero_data[relation_tuple].edge_index = torch.tensor([src, dest], dtype=torch.long).to(self.device)
         return hetero_data
 
-    def preprocess(self, feature_names: list, test_size: float = 0.001, val_size: float = 0.199, random_state: int = 1) -> None:
+    def preprocess(self, feature_names, test_size: float = 0.001, val_size: float = 0.199, random_state: int = 1) -> None:
         self.build_feature_matrix(feature_names)
         self.build_hetero_graph()
         self.prepare_training_data(test_size, val_size, random_state)
@@ -229,7 +227,8 @@ class EmbeddingPreprocessor:
             "hetero_graph": self.hetero_graph,
             "split_triplets": self.split_triplets,
             "labels": self.labels,
-            "entities_by_type": self.entities_by_type
+            "entities_by_type": self.entities_by_type,
+            "feature_names": self.feature_names
         }
 
     def load_config(self, config: dict) -> None:
@@ -239,3 +238,5 @@ class EmbeddingPreprocessor:
         self.split_triplets = config["split_triplets"]
         self.labels = config["labels"]
         self.entities_by_type = config["entities_by_type"]
+        self.feature_matrix = self.hetero_graph["entity"].x
+        self.feature_names = config["feature_names"]
