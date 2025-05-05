@@ -60,8 +60,8 @@ class TestGraphData(unittest.TestCase):
     def test_save_to_json(self):
         app_facade = AppFacade()
         app_facade.generate_graph_for_learning()
-        GraphJSON.save(app_facade.graph, "test.json")
-        loaded_graph = GraphJSON.load("test.json")
+        GraphJSON.save(app_facade.graph, "base_graph.json")
+        loaded_graph = GraphJSON.load("base_graph.json")
         self.assertEqual(len(app_facade.graph.nodes), len(loaded_graph.nodes))
         self.assertEqual([node.name for node in app_facade.graph.nodes], [node.name for node in loaded_graph.nodes])
         self.assertEqual([node.feature for node in app_facade.graph.nodes], [node.feature for node in loaded_graph.nodes])
@@ -71,7 +71,7 @@ class TestGraphData(unittest.TestCase):
 
 
     def test_balanced_graph(self):
-        graph = GraphJSON.load("test.json")
+        graph = GraphJSON.load("base_graph.json")
         count = {}
         for node in graph.nodes:
             if node.feature in count.keys():
@@ -81,6 +81,16 @@ class TestGraphData(unittest.TestCase):
 
         print(count)
         self.assertLessEqual(count["default"] / len(graph.nodes), 0.3)
+
+    def test_cloning(self):
+        graph = GraphJSON.load("base_graph.json")
+        cloned_graph = graph.clone()
+        self.assertEqual(len(graph.nodes), len(cloned_graph.nodes))
+        self.assertEqual([node.name for node in graph.nodes], [node.name for node in cloned_graph.nodes])
+        self.assertEqual([node.feature for node in graph.nodes], [node.feature for node in cloned_graph.nodes])
+        self.assertEqual(len(graph.edges), len(cloned_graph.edges))
+        self.assertEqual([edge.get_relation() for edge in graph.edges], [edge.get_relation() for edge in cloned_graph.edges])
+        self.assertEqual(len(graph.triplets), len(cloned_graph.triplets))
 
 if __name__ == '__main__':
     unittest.main()

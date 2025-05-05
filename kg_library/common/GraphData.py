@@ -98,7 +98,25 @@ class GraphData:
 
     def clone(self):
         new_graph = GraphData()
-        new_graph.entities = self.nodes.copy()
-        new_graph.relations = self.edges.copy()
-        new_graph.triplets = self.triplets.copy()
+        nodes_map = {}
+        edges_map = {}
+        for node in self.nodes:
+            new_node = NodeData(node.name, feature=node.feature)
+            nodes_map[node] = new_node
+            new_graph.nodes.append(new_node)
+
+        for edge in self.edges:
+            new_edge = EdgeData(edge.get_relation())
+            edges_map[edge] = new_edge
+            new_graph.edges.append(new_edge)
+
+        for node, new_node in nodes_map.items():
+            for input_rel in node.get_inputs():
+                new_node.add_input(edges_map[input_rel])
+            for output_rel in node.get_outputs():
+                new_node.add_output(edges_map[output_rel])
+
+        for head, relation, tail in self.triplets:
+            new_graph.triplets.append((nodes_map[head], edges_map[relation], nodes_map[tail]))
+
         return new_graph

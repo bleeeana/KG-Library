@@ -9,7 +9,7 @@ from kg_library.utils import create_test_graph, create_mini_test_graph
 class EmbeddingPrepareTest(unittest.TestCase):
 
     def test_feature_matrix(self):
-        graph = GraphJSON.load("test.json")
+        graph = GraphJSON.load("base_graph.json")
         preprocessor = EmbeddingPreprocessor(graph)
         preprocessor.build_feature_matrix([])
         self.assertIsNotNone(preprocessor)

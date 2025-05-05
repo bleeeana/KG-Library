@@ -9,6 +9,17 @@ services:
     environment:
       - NEO4J_AUTH=${NEO4J_AUTH}
       - NEO4J_URI=${NEO4J_URI}
+    volumes:
+      - ./data:/kg_library/data
+      - ./models:/kg_library/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: learn --size-dataset=100  # Пример команды, можно изменить через переменную окружения или при запуске
 
   neo4j:
     image: neo4j:5.26.3
@@ -22,7 +33,7 @@ services:
       - "7474:7474"  # HTTP-интерфейс Neo4j
       - "7687:7687"  # Bolt-протокол
     healthcheck:
-      test: [ "CMD", "wget", "http://localhost:7474" ]
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:7474" ]
       interval: 10s
       timeout: 10s
       retries: 10

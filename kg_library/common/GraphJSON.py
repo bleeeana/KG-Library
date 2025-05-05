@@ -1,6 +1,6 @@
 from kg_library.common import GraphData, EdgeData, NodeData
 import json
-
+import os
 class NodeJSON:
     @staticmethod
     def to_json(node : NodeData) -> dict:
@@ -64,5 +64,8 @@ class GraphJSON:
 
     @staticmethod
     def load(filepath : str) -> GraphData:
+        if not os.path.exists(filepath):
+            print(f"File {filepath} not found")
+            filepath = "base_graph.json"
         with open(filepath, "r") as f:
             return GraphJSON.from_json(f.read())

@@ -1,8 +1,32 @@
-FROM python:3.11-slim
-RUN apt-get update && apt-get install -y gcc ffmpeg && pip install poetry && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
+RUN apt-get update && apt-get install -y \
+    software-properties-common \
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update \
+    && apt-get install -y \
+    python3.11 \
+    python3.11-venv \
+    python3.11-dev \
+    python3-pip \
+    ffmpeg \
+    libsndfile1 \
+    wget \
+    git \
+    gcc \
+    g++ \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+RUN ln -sf /usr/bin/python3.11 /usr/bin/python3 && \
+    ln -sf /usr/bin/python3.11 /usr/bin/python && \
+    ln -sf /usr/bin/pip3 /usr/bin/pip \
+
+RUN pip install poetry
 WORKDIR /kg_library
 COPY pyproject.toml poetry.lock ./
-RUN poetry config virtualenvs.create false && poetry install --only main --no-interaction --no-ansi --no-root && rm -rf ~/.cache/pip ~/.cache/poetry
+RUN poetry config virtualenvs.create false && \
+    poetry install --only main --no-interaction --no-ansi --no-root && rm -rf ~/.cache/pip ~/.cache/poetry
+
 RUN mkdir -p /kg_library/cache/datasets && \
     python -m spacy download en_core_web_lg && \
     python -m coreferee install en && \
@@ -11,4 +35,8 @@ RUN mkdir -p /kg_library/cache/datasets && \
     python -c "import whisper; whisper.load_model('base',download_root='/kg_library/cache/whisper')"
 
 COPY . .
-CMD ["python", "-m", "kg_library.main"]
+
+COPY entrypoint.sh /kg_library/entrypoint.sh
+RUN chmod +x /kg_library/entrypoint.sh
+
+ENTRYPOINT ["/kg_library/entrypoint.sh"]

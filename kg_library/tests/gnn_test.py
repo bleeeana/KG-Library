@@ -3,7 +3,6 @@ import unittest
 from kg_library.common import GraphJSON
 from kg_library.models import EmbeddingPreprocessor
 from kg_library.models import GraphTrainer, GraphNN, create_dataloader
-from kg_library.models.entity_extraction.TripletExtractor import TripletExtractor
 from kg_library.utils import create_test_graph
 from kg_library import AppFacade
 
@@ -28,7 +27,7 @@ class GNNTest(unittest.TestCase):
         self.assertGreater(val_auc, 0.7, "Model AUC is too low, might not be learning")
 
     def test_load_graph_train(self):
-        graph = GraphJSON.load("test.json")
+        graph = GraphJSON.load("base_graph.json")
         preprocessor = EmbeddingPreprocessor(graph)
         preprocessor.preprocess([])
         model = GraphNN(preprocessor)
@@ -48,7 +47,7 @@ class GNNTest(unittest.TestCase):
 
     def test_finetune(self):
         app_facade = AppFacade()
-        app_facade.generate_graph_for_learning(False, True, True, "base_graph.json")
+        app_facade.generate_graph_for_learning(True, True, True, "base_graph.json")
         self.assertEqual(1,1)
 
 

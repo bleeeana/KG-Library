@@ -5,13 +5,14 @@ from kg_library.models.evaluation.TripletEvaluator import TripletEvaluator
 from kg_library.utils import AudioProcessor
 import torch
 
+
 class AppFacade:
     def __init__(self):
         self.knowledge_graph_extractor = TripletExtractor()
         self.base_information_extractor = WikidataExtractor()
-        self.graph_trainer : Optional[GraphTrainer] = None
-        self.preprocessor : Optional[EmbeddingPreprocessor] = None
-        self.model : Optional[GraphNN] = None
+        self.graph_trainer: Optional[GraphTrainer] = None
+        self.preprocessor: Optional[EmbeddingPreprocessor] = None
+        self.model: Optional[GraphNN] = None
         self.audio_processor = AudioProcessor()
         self.graph = GraphData()
         self.dataset = data_frame
@@ -36,7 +37,7 @@ class AppFacade:
                                            head_feature="title", tail_feature="date")
             for genre in genres:
                 self.graph.add_new_triplet(title, "has_genre", genre, check_synonyms=False, head_feature="title",
-                                               tail_feature="genre")
+                                           tail_feature="genre")
             self.import_wikidata_information(self.base_information_extractor.get_book_info(title), title)
             self.extract_plot_summary(i)
         self.graph.add_loop_reversed_triplet()
@@ -142,7 +143,8 @@ class AppFacade:
                         head_feature = "character"
                     if tail_feature.lower() == "person":
                         tail_feature = "character"
-                    self.graph.add_new_triplet(head, relation, tail, check_synonyms=True, head_feature=head_feature.lower(), tail_feature=tail_feature.lower())
+                    self.graph.add_new_triplet(head, relation, tail, check_synonyms=True,
+                                               head_feature=head_feature.lower(), tail_feature=tail_feature.lower())
 
     def extract_plot(self, index) -> set:
         plot = self.dataset["Plot summary"][index]
@@ -151,7 +153,9 @@ class AppFacade:
         else:
             return set()
 
-    def generate_graph_for_learning(self, load_model_from_file=False, load_triplets_from_file=False, load_graph=False, graph_path="test.json"):
+    def generate_graph_for_learning(self, load_model_from_file=False, load_triplets_from_file=False, load_graph=False,
+                                    graph_path="base_graph.json", finetune=True, dataset_size=200):
+        self.size = dataset_size
         if load_model_from_file:
             self.load_model_for_finetune()
         else:
@@ -161,7 +165,7 @@ class AppFacade:
                 self.input_base_data()
                 GraphJSON.save(self.graph, "base_graph.json")
             self.learning_process()
-        #self.find_internal_links()
+        # self.find_internal_links()
         extra_triplets = set()
         if not load_triplets_from_file:
             for i in range(self.size):
@@ -171,7 +175,8 @@ class AppFacade:
         else:
             self.knowledge_graph_extractor.load_triplets_from_json()
             extra_triplets = self.knowledge_graph_extractor.triplets
-        self.finetune_model(extra_triplets)
+        if finetune:
+            self.finetune_model(extra_triplets)
 
     def learning_process(self):
         self.preprocessor = EmbeddingPreprocessor(self.graph)
@@ -179,23 +184,25 @@ class AppFacade:
 
         self.model = GraphNN(self.preprocessor)
         train_loader, test_loader, val_loader = create_dataloader(self.preprocessor, batch_size=64)
-        self.graph_trainer = GraphTrainer(self.model, train_loader, val_loader, epochs=10, lr=0.0005)
+        self.graph_trainer = GraphTrainer(self.model, train_loader, val_loader, epochs=25, lr=0.0005)
         self.graph_trainer.train()
         val_auc = self.graph_trainer.evaluate(self.graph_trainer.val_loader)
         print(f"Final Val AUC: {val_auc}")
+
         self.graph_trainer.save_with_config()
 
-    def generate_graph_from_audio(self, audio : str, confidence_threshold, link_prediction = False, finetune = False):
+    def generate_graph_from_audio(self, audio: str, confidence_threshold, link_prediction=False, finetune=False, model_path="model_finetune.pt"):
         text = self.audio_processor.transform_to_text(audio)
         self.generate_graph_from_text(text, confidence_threshold, link_prediction, finetune)
 
-    def generate_graph_from_text(self, text : str, confidence_threshold, find_internal_links = True, finetune = False) -> GraphData:
+    def generate_graph_from_text(self, text: str, confidence_threshold, find_internal_links=True,
+                                 finetune=False, model_path="model_finetune.pt") -> GraphData:
         raw_triplets = self.knowledge_graph_extractor.extract_from_full_text(text)
         temp_graph = GraphData()
         if self.model is None:
             try:
                 print("Загрузка модели для фильтрации триплетов...")
-                self.load_model(model_path="model_finetune.pt", map_location='cuda')
+                self.load_model(model_path=model_path, map_location='cuda')
                 print("Модель успешно загружена")
             except Exception as e:
                 print(f"Невозможно загрузить модель: {str(e)}")
@@ -294,7 +301,7 @@ class AppFacade:
         GraphJSON.save(self.graph, graph_path)
         checkpoint = {
             'model_state_dict': self.model.state_dict(),
-            'model_config' : self.model.get_config(),
+            'model_config': self.model.get_config(),
             'preprocessor_config': self.preprocessor.get_config(),
             'graph': graph_path
         }
@@ -313,12 +320,17 @@ class AppFacade:
         self.graph = GraphJSON.load(checkpoint["graph"])
         self.preprocessor = EmbeddingPreprocessor(self.graph)
         self.preprocessor.load_config(checkpoint["preprocessor_config"])
+        print(self.preprocessor.entity_id)
+        print(self.preprocessor.relation_id)
         train_loader, test_loader, val_loader = create_dataloader(self.preprocessor, batch_size=64)
-        self.graph_trainer = GraphTrainer.load_model_for_training(self.preprocessor, model_path, map_location=map_location, train_loader=train_loader, val_loader=val_loader)
+        self.graph_trainer = GraphTrainer.load_model_for_training(self.preprocessor, model_path,
+                                                                  map_location=map_location, train_loader=train_loader,
+                                                                  val_loader=val_loader)
         self.model = self.graph_trainer.model
 
     def finetune_model(self, new_triplets, confidence_threshold=0.65) -> dict:
         added_triplets, updated_graph = self.filter_additional_triplets_for_finetune(confidence_threshold, new_triplets)
+        print("Finish filtering")
         if added_triplets == 0:
             return {}
 
@@ -330,8 +342,12 @@ class AppFacade:
         }
 
     def finetuning(self, updated_graph):
+        updated_graph.add_loop_reversed_triplet()
         updated_preprocessor = EmbeddingPreprocessor(updated_graph)
+        print(self.preprocessor.feature_names)
         updated_preprocessor.preprocess(self.knowledge_graph_extractor.type_map.values())
+        print(updated_preprocessor.entity_id)
+        print(updated_preprocessor.relation_id)
         updated_train_loader, updated_test_loader, updated_val_loader = create_dataloader(updated_preprocessor,
                                                                                           batch_size=64)
         new_model = GraphNN(
@@ -341,7 +357,7 @@ class AppFacade:
             dropout=self.model.get_config()["dropout"]
         )
         new_model.transfer_weights(self.model, self.preprocessor)
-        trainer = GraphTrainer(new_model, updated_train_loader, updated_val_loader, epochs=20)
+        trainer = GraphTrainer(new_model, updated_train_loader, updated_val_loader, epochs=20, lr=5e-4)
         print("Start finetuning")
         trainer.train()
         val_auc = trainer.evaluate(updated_val_loader)
@@ -359,7 +375,7 @@ class AppFacade:
         added_triplets = 0
         for head, relation, tail, head_feature, tail_feature in new_triplets:
             if updated_graph.has_triplet(head, relation, tail):
-                print(f"Already has triplet {head} - [{relation}] -> {tail}")
+                # print(f"Already has triplet {head}({head_feature}) - [{relation}] -> {tail}({tail_feature})")
                 continue
             head_id = self.preprocessor.entity_id.get(head, None)
             tail_id = self.preprocessor.entity_id.get(tail, None)
@@ -379,7 +395,7 @@ class AppFacade:
             probability = torch.sigmoid(torch.tensor(score)).item()
 
             if probability > confidence_threshold:
-                print(f"Adding new triplet {head} - [{relation}] -> {tail} (score: {probability:.4f})")
+                # print(f"Adding new triplet {head}({head_feature}) - [{relation}] -> {tail}({tail_feature}) (score: {probability:.4f})")
                 updated_graph.add_new_triplet(
                     head=head,
                     relation=relation,
@@ -389,6 +405,6 @@ class AppFacade:
                     tail_feature=tail_feature
                 )
                 added_triplets += 1
-            else:
-                print(f"Discarding new triplet {head} - [{relation}] -> {tail} (score: {probability:.4f})")
+            # else:
+            # print(f"Discarding new triplet {head}({head_feature}) - [{relation}] -> {tail}({tail_feature}) (score: {probability:.4f})")
         return added_triplets, updated_graph

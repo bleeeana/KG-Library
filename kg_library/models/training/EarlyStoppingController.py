@@ -18,7 +18,7 @@ class EarlyStoppingController:
 
             best = self.best_scores[metric]
             mode = config.get("mode", "max")
-            min_delta = config.get("min_delta", 0.0)
+            min_delta = config.get("min_delta", 0.01)
 
             if best is None:
                 self.best_scores[metric] = current

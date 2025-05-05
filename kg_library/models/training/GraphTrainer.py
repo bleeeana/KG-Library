@@ -24,7 +24,7 @@ class GraphTrainer:
                 "auc": {"mode": "max", "min_delta": 0.001},
                 "loss": {"mode": "min", "min_delta": 0.001}
             },
-            patience=5
+            patience=4
         )
         self.optimizer = AdamW(model.parameters(), lr=lr, weight_decay=1e-5)
         self.scheduler = ReduceLROnPlateau(self.optimizer, mode='max', patience=patience, factor=0.5)
@@ -149,7 +149,7 @@ class GraphTrainer:
 
         return val_auc, val_loss
 
-    def save_with_config(self, model_path="model_with_config.pt", graph_path="test.json"):
+    def save_with_config(self, model_path="model_with_config.pt", graph_path="base_graph.json"):
         torch.save({
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
