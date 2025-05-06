@@ -19,7 +19,7 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    command: learn --size-dataset=100  # Пример команды, можно изменить через переменную окружения или при запуске
+
 
   neo4j:
     image: neo4j:5.26.3

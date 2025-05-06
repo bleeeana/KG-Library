@@ -8,10 +8,10 @@ from kg_library import get_config
 from kg_library.models import EmbeddingPreprocessor
 
 class GraphNN(nn.Module):
-    def __init__(self, preprocessor : EmbeddingPreprocessor, hidden_dim=get_config()["hidden_dim"], num_layers=3, dropout=0.3):
+    def __init__(self, preprocessor: EmbeddingPreprocessor, hidden_dim=get_config()["hidden_dim"], num_layers=3, dropout=0.3):
         super().__init__()
-        self.preprocessor : EmbeddingPreprocessor = preprocessor
-        self.device : torch.device = preprocessor.device
+        self.preprocessor: EmbeddingPreprocessor = preprocessor
+        self.device: torch.device = preprocessor.device
         self.num_layers = num_layers
 
         num_entities = len(preprocessor.entity_id) + 1
@@ -23,6 +23,12 @@ class GraphNN(nn.Module):
 
         self.feature_proj = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.LeakyReLU(0.2)
+        )
+
+        self.combine_proj = nn.Sequential(
+            nn.Linear(2 * hidden_dim, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.LeakyReLU(0.2)
         )
@@ -39,7 +45,6 @@ class GraphNN(nn.Module):
                     concat=False,
                     dropout=dropout,
                     add_self_loops=False,
-
                 ) for edge_type in preprocessor.hetero_graph.edge_types
             }, aggr='mean') for _ in range(num_layers)
         ])
@@ -47,14 +52,17 @@ class GraphNN(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.to(self.device)
 
-    def forward(self, graph : HeteroData):
+    def forward(self, graph: HeteroData):
         node_features = self.feature_proj(self.preprocessor.feature_matrix.to(self.device))
         node_embeddings = F.normalize(
             self.entity_embedding(torch.arange(node_features.size(0), device=self.device)),
             p=2, dim=1
         )
 
-        x = {"entity": 0.6 * node_features + 0.4 * node_embeddings}
+        combined_input = torch.cat([node_features, node_embeddings], dim=1)
+        combined_representation = self.combine_proj(combined_input)
+
+        x = {"entity": combined_representation}
         x_initial = {k: v.clone() for k, v in x.items()}
 
         for i, conv in enumerate(self.layers):
@@ -66,6 +74,7 @@ class GraphNN(nn.Module):
             }
 
         return x
+
 
     def score_function(self, head, tail, relation):
         return self.gamma - torch.norm(head + relation - tail, p=2, dim=1)

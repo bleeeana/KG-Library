@@ -18,6 +18,7 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
+# shellcheck disable=SC2145
 echo "Running with arguments: $@"
 python -m kg_library.main "$@"
 

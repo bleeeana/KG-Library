@@ -26,14 +26,15 @@ class TripletEvaluator:
         return F.normalize(embedding, p=2, dim=1)
 
     @torch.no_grad()
-    def score_new_triplet(self, graph : HeteroData, head_feature: str, tail_feature: str, head_name: str, tail_name: str, relation: str,
-                          head_id: int = None, tail_id: int = None, add_to_graph: bool = False, feature_names: list[str] = None):
+    def score_new_triplet(self, graph: HeteroData, head_feature: str, tail_feature: str, head_name: str, tail_name: str,
+                          relation: str,
+                          head_id: int = None, tail_id: int = None, add_to_graph: bool = False,
+                          feature_names: list[str] = None):
         if graph is None:
             graph = self.preprocessor.hetero_graph.to(self.device_string)
 
-        with torch.no_grad():
-            embeddings = self.model(graph)
-            entity_embeddings = embeddings["entity"]
+        embeddings = self.model(graph)
+        entity_embeddings = embeddings["entity"]
 
         head_embedding = self.get_final_embedding(entity_embeddings, head_feature, head_id)
         tail_embedding = self.get_final_embedding(entity_embeddings, tail_feature, tail_id)
@@ -50,7 +51,6 @@ class TripletEvaluator:
         score_value = score.item()
 
         if add_to_graph and relation is not None:
-
             self.preprocessor.graph.add_new_triplet(
                 head=head_name,
                 relation=relation,
@@ -74,15 +74,15 @@ class TripletEvaluator:
 
         return score_value
 
-
     def get_final_embedding(self, embeddings, feature, _id):
         if _id is not None:
             embedding = embeddings[_id].unsqueeze(0)
         else:
-            projected_tail = self.model.feature_proj(
-                self.preprocessor.get_feature_tensor(feature).to(self.device_string))
+            feature_tensor = self.preprocessor.get_feature_tensor(feature).to(self.device_string)
+            projected_feature = self.model.feature_proj(feature_tensor)
             entity_embedding = self.get_new_entity_embedding(entity_type=feature)
-            embedding = 0.6 * projected_tail + 0.4 * entity_embedding
+            combined_input = torch.cat([projected_feature, entity_embedding], dim=1)
+            embedding = self.model.combine_proj(combined_input)
         return embedding
 
     @torch.no_grad()

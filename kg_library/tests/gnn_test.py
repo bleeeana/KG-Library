@@ -24,7 +24,7 @@ class GNNTest(unittest.TestCase):
         val_auc = trainer.evaluate(trainer.val_loader)
 
         print(f"Final Val AUC: {val_auc}")
-        self.assertGreater(val_auc, 0.7, "Model AUC is too low, might not be learning")
+        self.assertGreater(val_auc[0], 0.7, "Model AUC is too low, might not be learning")
 
     def test_load_graph_train(self):
         graph = GraphJSON.load("base_graph.json")
