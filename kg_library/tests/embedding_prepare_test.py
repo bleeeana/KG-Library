@@ -15,7 +15,7 @@ class EmbeddingPrepareTest(unittest.TestCase):
         self.assertIsNotNone(preprocessor)
 
     def test_creating_leaf_tensor(self):
-        graph = create_test_graph()
+        graph = create_mini_test_graph()
         preprocessor = EmbeddingPreprocessor(graph)
         preprocessor.build_feature_matrix([])
         preprocessor.build_hetero_graph()

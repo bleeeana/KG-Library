@@ -3,9 +3,10 @@ from kg_library.models import GraphNN, EmbeddingPreprocessor
 import torch
 import torch.nn.functional as F
 
+
 class TripletEvaluator:
     def __init__(self, model: GraphNN):
-        self.model : GraphNN = model
+        self.model: GraphNN = model
         self.device_string = str(self.model.device)
         self.preprocessor: EmbeddingPreprocessor = model.preprocessor
 
@@ -33,11 +34,10 @@ class TripletEvaluator:
         if graph is None:
             graph = self.preprocessor.hetero_graph.to(self.device_string)
 
-        embeddings = self.model(graph)
-        entity_embeddings = embeddings["entity"]
+        embeddings = self.model(graph)["entity"]
 
-        head_embedding = self.get_final_embedding(entity_embeddings, head_feature, head_id)
-        tail_embedding = self.get_final_embedding(entity_embeddings, tail_feature, tail_id)
+        head_embedding = self.get_entity_embedding(embeddings, head_id, head_feature)
+        tail_embedding = self.get_entity_embedding(embeddings, tail_id, tail_feature)
 
         if relation in self.preprocessor.relation_id:
             relation_id = self.preprocessor.relation_id[relation]
@@ -74,16 +74,14 @@ class TripletEvaluator:
 
         return score_value
 
-    def get_final_embedding(self, embeddings, feature, _id):
-        if _id is not None:
-            embedding = embeddings[_id].unsqueeze(0)
+    def get_entity_embedding(self, embeddings, entity_id, entity_type):
+        """Получает эмбеддинг сущности либо по её ID, либо генерирует новый по типу"""
+        if entity_id is not None:
+            # Берем эмбеддинг напрямую из уже обработанных
+            return embeddings[entity_id].unsqueeze(0)
         else:
-            feature_tensor = self.preprocessor.get_feature_tensor(feature).to(self.device_string)
-            projected_feature = self.model.feature_proj(feature_tensor)
-            entity_embedding = self.get_new_entity_embedding(entity_type=feature)
-            combined_input = torch.cat([projected_feature, entity_embedding], dim=1)
-            embedding = self.model.combine_proj(combined_input)
-        return embedding
+            # Для новой сущности генерируем эмбеддинг на основе типа
+            return self.get_new_entity_embedding(entity_type=entity_type)
 
     @torch.no_grad()
     def link_prediction_in_graph(self, threshold=0.75, top_k=10, batch_size=128):

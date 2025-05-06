@@ -4,3 +4,4 @@ from kg_library.models.training.EmbeddingPreprocessor import EmbeddingPreprocess
 from kg_library.models.training.DataLoader import create_dataloader, create_single_batch_dataloader
 from kg_library.models.training.GraphNN import GraphNN
 from kg_library.models.training.GraphTrainer import GraphTrainer
+from kg_library.models.training.CompGCNConv import CompGCNConv

@@ -34,7 +34,6 @@ class EmbeddingPreprocessor:
         feature[self.feature_names.index(feature_name)] = 1.0
         return feature
 
-
     def expand_feature_names(self, feature_names):
         for feature_name in feature_names:
             if feature_name and feature_name.lower() not in self.feature_names:
@@ -60,6 +59,7 @@ class EmbeddingPreprocessor:
         self.hetero_graph = HeteroData()
         self.hetero_graph["entity"].x = self.feature_matrix
         edge_index_dict = {}
+        edge_type_dict = {}
         for head, relation, tail in self.graph.triplets:
             relation_name = relation.get_relation()
             h_id = self.entity_id[head.name]
@@ -68,8 +68,10 @@ class EmbeddingPreprocessor:
                 edge_index_dict[('entity', relation_name, 'entity')] = [[], []]
             edge_index_dict[('entity', relation_name, 'entity')][0].append(h_id)
             edge_index_dict[('entity', relation_name, 'entity')][1].append(t_id)
+            edge_type_dict[relation_name] = self.relation_id[relation_name]
         for relation_tuple, (src, dest) in edge_index_dict.items():
             self.hetero_graph[relation_tuple].edge_index = torch.tensor([src, dest], dtype=torch.long).to(self.device)
+        self.hetero_graph.edge_type_dict = edge_type_dict
 
     def prepare_training_data(
             self,
@@ -193,6 +195,7 @@ class EmbeddingPreprocessor:
         hetero_data = HeteroData()
         hetero_data["entity"].x = feature_matrix
         edge_index_dict = {}
+        edge_type_dict = {}
         for i in range(len(head)):
             h_id = head[i]
             t_id = tail[i]
@@ -201,8 +204,10 @@ class EmbeddingPreprocessor:
                 edge_index_dict[('entity', relation_name, 'entity')] = [[], []]
             edge_index_dict[('entity', relation_name, 'entity')][0].append(h_id)
             edge_index_dict[('entity', relation_name, 'entity')][1].append(t_id)
+            edge_type_dict[relation_name] = batch.edge_attr[i].item()
         for relation_tuple, (src, dest) in edge_index_dict.items():
             hetero_data[relation_tuple].edge_index = torch.tensor([src, dest], dtype=torch.long).to(self.device)
+        hetero_data.edge_type_dict = edge_type_dict
         return hetero_data
 
     def preprocess(self, feature_names, test_size: float = 0.001, val_size: float = 0.199, random_state: int = 1) -> None:
