@@ -30,8 +30,10 @@ RUN python -m spacy download en_core_web_lg && \
 COPY . .
 
 RUN mkdir -p /kg_library/cache/datasets /kg_library/cache/whisper \
-    /data/input /data/output /data/models
-VOLUME ["/data/input", "/data/output", "/data/models", "/kg_library/cache/datasets", "/kg_library/cache/whisper"]
+    /kg_library/data/input /kg_library/data/output /kg_library/data/models
+
+VOLUME ["/kg_library/data/input", "/kg_library/data/output", "/kg_library/data/models", "/kg_library/cache/datasets", "/kg_library/cache/whisper"]
+
 RUN chmod +x /kg_library/entrypoint.sh
 
 ENTRYPOINT ["/kg_library/entrypoint.sh"]

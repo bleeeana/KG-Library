@@ -10,8 +10,12 @@ services:
       - NEO4J_AUTH=${NEO4J_AUTH}
       - NEO4J_URI=${NEO4J_URI}
     volumes:
-      - ./data:/kg_library/data
-      - ./models:/kg_library/models
+      - ./data/input:/kg_library/data/input
+      - ./data/output:/kg_library/data/output
+      - ./data/models:/kg_library/data/models
+      - ./cache/datasets:/kg_library/cache/datasets
+      - ./cache/whisper:/kg_library/cache/whisper
+
     deploy:
       resources:
         reservations:

@@ -164,7 +164,7 @@ class AppFacade:
                 self.graph = GraphJSON.load(graph_path)
             else:
                 self.input_base_data()
-                GraphJSON.save(self.graph, "base_graph.json")
+                GraphJSON.save(self.graph, "../data/input/base_graph.json")
             self.learning_process()
         # self.find_internal_links()
         extra_triplets = set()

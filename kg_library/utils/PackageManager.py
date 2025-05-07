@@ -2,14 +2,30 @@ import os
 
 
 class PathManager:
-    DATA_DIR = "/data"
-    INPUT_DIR = f"{DATA_DIR}/input"
-    OUTPUT_DIR = f"{DATA_DIR}/output"
-    MODELS_DIR = f"{DATA_DIR}/models"
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+    DATA_DIR = os.path.join(BASE_DIR, "data")
+    INPUT_DIR = os.path.join(DATA_DIR, "input")
+    OUTPUT_DIR = os.path.join(DATA_DIR, "output")
+    MODELS_DIR = os.path.join(DATA_DIR, "models")
+
+    CACHE_DIR = os.path.join(BASE_DIR, "cache")
+    DATASETS_CACHE_DIR = os.path.join(CACHE_DIR, "datasets")
+    WHISPER_CACHE_DIR = os.path.join(CACHE_DIR, "whisper")
 
     @staticmethod
     def ensure_dirs():
-        for dir_path in [PathManager.INPUT_DIR, PathManager.OUTPUT_DIR, PathManager.MODELS_DIR]:
+        directories = [
+            PathManager.DATA_DIR,
+            PathManager.INPUT_DIR,
+            PathManager.OUTPUT_DIR,
+            PathManager.MODELS_DIR,
+            PathManager.CACHE_DIR,
+            PathManager.DATASETS_CACHE_DIR,
+            PathManager.WHISPER_CACHE_DIR
+        ]
+
+        for dir_path in directories:
             os.makedirs(dir_path, exist_ok=True)
 
     @staticmethod
@@ -23,3 +39,11 @@ class PathManager:
     @staticmethod
     def get_input_path(filename):
         return os.path.join(PathManager.INPUT_DIR, filename)
+
+    @staticmethod
+    def get_datasets_cache_path():
+        return PathManager.DATASETS_CACHE_DIR
+
+    @staticmethod
+    def get_whisper_cache_path():
+        return PathManager.WHISPER_CACHE_DIR
