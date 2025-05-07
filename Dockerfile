@@ -19,23 +19,19 @@ RUN ln -sf /usr/bin/python3.11 /usr/bin/python && \
     ln -sf /usr/bin/pip3 /usr/bin/pip && \
     pip install --no-cache-dir --upgrade pip
 
-RUN pip install --no-cache-dir poetry
+RUN pip install poetry
 
 WORKDIR /kg_library
 COPY pyproject.toml poetry.lock ./
-RUN poetry config virtualenvs.create false && \
-    poetry install --only main --no-interaction --no-ansi --no-root && rm -rf ~/.cache/pip ~/.cache/poetry
+RUN poetry config virtualenvs.create false && poetry install --only main --no-interaction --no-ansi --no-root && rm -rf ~/.cache/pip ~/.cache/poetry
 
-RUN mkdir -p /kg_library/cache/datasets && \
-    python -m spacy download en_core_web_lg && \
-    python -m coreferee install en && \
-    python -c "from datasets import load_dataset; \
-    load_dataset('kingkangkr/book_summary_dataset', cache_dir='/kg_library/cache/datasets')" && \
-    python -c "import whisper; whisper.load_model('base',download_root='/kg_library/cache/whisper')"
-
+RUN python -m spacy download en_core_web_lg && \
+    python -m coreferee install en
 COPY . .
 
-COPY entrypoint.sh /kg_library/entrypoint.sh
+RUN mkdir -p /kg_library/cache/datasets /kg_library/cache/whisper \
+    /data/input /data/output /data/models
+VOLUME ["/data/input", "/data/output", "/data/models", "/kg_library/cache/datasets", "/kg_library/cache/whisper"]
 RUN chmod +x /kg_library/entrypoint.sh
 
 ENTRYPOINT ["/kg_library/entrypoint.sh"]

@@ -1,6 +1,8 @@
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from kg_library.utils import Preprocessing
 import json
+from kg_library.utils import PathManager
+import os
 
 class TripletExtractor:
     def __init__(self, model_name="Babelscape/mrebel-large", src_lang="en_XX", tgt_lang="tp_XX"):
@@ -102,13 +104,25 @@ class TripletExtractor:
             print(f"  ({head} - [{head_type}]) -[{relation}]-> ({tail} - [{tail_type}])")
 
     def save_triplets_to_json(self, file_name="triplets.json"):
-        with open(file_name, "w") as f:
+        PathManager.ensure_dirs()
+        file_path = PathManager.get_output_path(file_name)
+
+        with open(file_path, "w") as f:
             json.dump(list(self.triplets), f)
 
     def load_triplets_from_json(self, file_name="triplets.json"):
-        with open(file_name, "r") as f:
+        output_path = PathManager.get_output_path(file_name)
+        input_path = PathManager.get_input_path(file_name)
+
+        if os.path.exists(output_path):
+            file_path = output_path
+        elif os.path.exists(input_path):
+            file_path = input_path
+        else:
+            file_path = file_name
+
+        with open(file_path, "r") as f:
             self.triplets = {tuple(inner_list) for inner_list in json.load(f)}
-            #self.print_knowledge_graph()
 
 
 if __name__ == "__main__":

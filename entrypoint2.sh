@@ -1,16 +1,4 @@
 #!/bin/bash
-set -e
-
-if [ ! -f /kg_library/cache/datasets/kingkangkr___book_summary_dataset/1.0.0/.dataset_info.json ]; then
-  echo "Downloading book summary dataset..."
-  python -c "from datasets import load_dataset; load_dataset('kingkangkr/book_summary_dataset', cache_dir='/kg_library/cache/datasets')"
-fi
-
-if [ ! -d /kg_library/cache/whisper/base ]; then
-  echo "Downloading whisper model..."
-  python -c "import whisper; whisper.load_model('base',download_root='/kg_library/cache/whisper')"
-fi
-
 echo "=== GPU Information ==="
 if command -v nvidia-smi &> /dev/null; then
     nvidia-smi

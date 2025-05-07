@@ -1,6 +1,7 @@
 from kg_library.common import GraphData, EdgeData, NodeData
 import json
 import os
+from kg_library.utils import PathManager
 class NodeJSON:
     @staticmethod
     def to_json(node : NodeData) -> dict:
@@ -58,14 +59,37 @@ class GraphJSON:
         return graph
 
     @staticmethod
-    def save(graph : GraphData, filepath : str):
+    def save(graph: GraphData, filepath: str):
+
+        if os.path.dirname(filepath) == "":
+            PathManager.ensure_dirs()
+            filepath = PathManager.get_output_path(filepath)
+
         with open(filepath, "w") as f:
             f.write(GraphJSON.to_json(graph))
 
     @staticmethod
-    def load(filepath : str) -> GraphData:
+    def load(filepath: str) -> GraphData:
+        
+
+        original_path = filepath
+
+        if os.path.dirname(filepath) == "":
+            output_path = PathManager.get_output_path(filepath)
+            input_path = PathManager.get_input_path(filepath)
+
+            if os.path.exists(output_path):
+                filepath = output_path
+            elif os.path.exists(input_path):
+                filepath = input_path
+
         if not os.path.exists(filepath):
-            print(f"File {filepath} not found")
-            filepath = "base_graph.json"
+            print(f"File {original_path} not found")
+            base_path = PathManager.get_input_path("base_graph.json")
+            if os.path.exists(base_path):
+                filepath = base_path
+            else:
+                filepath = "base_graph.json"  
+
         with open(filepath, "r") as f:
             return GraphJSON.from_json(f.read())

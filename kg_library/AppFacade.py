@@ -2,8 +2,9 @@ from typing import Optional
 from kg_library.common import GraphData, WikidataExtractor, data_frame, GraphJSON
 from kg_library.models import TripletExtractor, GraphTrainer, GraphNN, EmbeddingPreprocessor, create_dataloader
 from kg_library.models.evaluation.TripletEvaluator import TripletEvaluator
-from kg_library.utils import AudioProcessor
+from kg_library.utils import AudioProcessor, PathManager
 import torch
+import os
 
 
 class AppFacade:
@@ -193,7 +194,7 @@ class AppFacade:
 
     def generate_graph_from_audio(self, audio: str, confidence_threshold, link_prediction=False, finetune=False, model_path="model_finetune.pt"):
         text = self.audio_processor.transform_to_text(audio)
-        self.generate_graph_from_text(text, confidence_threshold, link_prediction, finetune)
+        self.generate_graph_from_text(text, confidence_threshold, link_prediction, finetune, model_path)
 
     def generate_graph_from_text(self, text: str, confidence_threshold, find_internal_links=True,
                                  finetune=False, model_path="model_finetune.pt") -> GraphData:
@@ -298,6 +299,12 @@ class AppFacade:
                 )
 
     def save_model(self, model_path, graph_path="graph.json"):
+        if os.path.dirname(model_path) == "":
+            PathManager.ensure_dirs()
+            model_path = PathManager.get_model_path(model_path)
+
+        if os.path.dirname(graph_path) == "":
+            graph_path = PathManager.get_output_path(graph_path)
         GraphJSON.save(self.graph, graph_path)
         checkpoint = {
             'model_state_dict': self.model.state_dict(),
@@ -308,11 +315,22 @@ class AppFacade:
         torch.save(checkpoint, model_path)
 
     def load_model(self, model_path="model.pt", map_location='cuda'):
+        if os.path.dirname(model_path) == "":
+            models_path = PathManager.get_model_path(model_path)
+            input_path = PathManager.get_input_path(model_path)
+            if os.path.exists(models_path):
+                model_path = models_path
+            elif os.path.exists(input_path):
+                model_path = input_path
         checkpoint = torch.load(model_path, map_location=map_location)
         if "graph" in checkpoint:
-            self.graph = GraphJSON.load(checkpoint["graph"])
-            self.preprocessor = EmbeddingPreprocessor(self.graph)
-            self.preprocessor.load_config(checkpoint["preprocessor_config"])
+            graph_path = checkpoint["graph"]
+            try:
+                self.graph = GraphJSON.load(graph_path)
+                self.preprocessor = EmbeddingPreprocessor(self.graph)
+                self.preprocessor.load_config(checkpoint["preprocessor_config"])
+            except:
+                print(f"Не удалось загрузить граф из {graph_path}")
         self.model = GraphNN.load_model(model_path, map_location=map_location, preprocessor=self.preprocessor)
 
     def load_model_for_finetune(self, model_path="model_with_config.pt", map_location='cuda'):
