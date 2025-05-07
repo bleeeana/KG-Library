@@ -103,6 +103,13 @@ class GraphTrainer:
         scores = self.model.score_function(h, t, r)
         loss = F.binary_cross_entropy_with_logits(scores, batch.y)
 
+        if is_training and self.global_step % 10 == 0:
+            self.writer.add_scalar("Model/gamma", self.model.gamma.item(), self.global_step)
+
+        if is_training:
+            gamma_reg = 0.01 * (self.model.gamma - torch.tensor(10.0, device=self.device)) ** 2
+            loss += gamma_reg
+
         if is_training:
             self.optimizer.zero_grad()
             loss.backward()

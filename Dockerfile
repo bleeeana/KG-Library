@@ -1,9 +1,6 @@
 FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
-RUN apt-get update && apt-get install -y \
-    software-properties-common \
-    && add-apt-repository ppa:deadsnakes/ppa \
-    && apt-get update \
-    && apt-get install -y \
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.11 \
     python3.11-venv \
     python3.11-dev \
@@ -17,11 +14,13 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-RUN ln -sf /usr/bin/python3.11 /usr/bin/python3 && \
-    ln -sf /usr/bin/python3.11 /usr/bin/python && \
-    ln -sf /usr/bin/pip3 /usr/bin/pip \
+RUN ln -sf /usr/bin/python3.11 /usr/bin/python && \
+    ln -sf /usr/bin/python3.11 /usr/bin/python3 && \
+    ln -sf /usr/bin/pip3 /usr/bin/pip && \
+    pip install --no-cache-dir --upgrade pip
 
-RUN pip install poetry
+RUN pip install --no-cache-dir poetry
+
 WORKDIR /kg_library
 COPY pyproject.toml poetry.lock ./
 RUN poetry config virtualenvs.create false && \

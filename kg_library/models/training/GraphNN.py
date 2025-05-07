@@ -8,21 +8,22 @@ from kg_library.models.training.CompGCNConv import CompGCNConv
 
 
 class GraphNN(nn.Module):
-    def __init__(self, preprocessor: EmbeddingPreprocessor, hidden_dim=get_config()["hidden_dim"], num_layers=3,
-                 dropout=0.2):
+    def __init__(self, preprocessor: EmbeddingPreprocessor, hidden_dim=get_config()["hidden_dim"],
+                 num_layers=3, dropout=0.2):
         super().__init__()
         self.preprocessor = preprocessor
         self.device = preprocessor.device
         self.num_layers = num_layers
 
-        num_entities = len(preprocessor.entity_id) + 1  # +1 для обработки OOV сущностей
-        num_relations = len(preprocessor.relation_id) + 1
+        num_entities = len(preprocessor.entity_id)
+        num_relations = len(preprocessor.relation_id)
 
+        num_node_types = len(preprocessor.feature_names) if hasattr(preprocessor, 'feature_names') else 1
         self.entity_embedding = nn.Embedding(num_entities, hidden_dim)
         self.relation_embedding = nn.Embedding(num_relations, hidden_dim)
 
         self.layers = nn.ModuleList([
-            CompGCNConv(hidden_dim, hidden_dim, num_relations)
+            CompGCNConv(hidden_dim, hidden_dim, num_relations, num_node_types=num_node_types)
             for _ in range(num_layers)
         ])
 
@@ -39,17 +40,18 @@ class GraphNN(nn.Module):
         x_initial = {"entity": x["entity"].clone()}
 
         for i, conv in enumerate(self.layers):
-            x_updated = conv(x["entity"], graph.edge_index_dict, graph.edge_type_dict)
-
+            x_updated = conv(
+                x["entity"],
+                graph.edge_index_dict,
+                graph.edge_type_dict,
+                graph.node_type_dict
+            )
             x_updated = {
-                key: self.dropout(F.leaky_relu(val, 0.2))
-                for key, val in x_updated.items()
+                "entity": self.dropout(F.leaky_relu(x_updated["entity"], 0.2))
             }
-
             alpha = torch.sigmoid(self.skip_weights[i])
             x = {
-                key: (1 - alpha) * x_updated[key] + alpha * x_initial[key]
-                for key in x_updated.keys()
+                "entity": (1 - alpha) * x_updated["entity"] + alpha * x_initial["entity"]
             }
 
         return x
@@ -70,13 +72,15 @@ class GraphNN(nn.Module):
             "dropout": self.dropout.p
         }
 
-    # без дообучения
     @staticmethod
     def load_model(model_path="model.pt", map_location='cuda', preprocessor: EmbeddingPreprocessor = None):
         checkpoint = torch.load(model_path, map_location=map_location)
-        model = GraphNN(preprocessor, hidden_dim=checkpoint["model_config"]["hidden_dim"],
-                        num_layers=checkpoint["model_config"]["num_layers"],
-                        dropout=checkpoint["model_config"]["dropout"])
+        model = GraphNN(
+            preprocessor,
+            hidden_dim=checkpoint["model_config"]["hidden_dim"],
+            num_layers=checkpoint["model_config"]["num_layers"],
+            dropout=checkpoint["model_config"]["dropout"]
+        )
         model.load_state_dict(checkpoint["model_state_dict"])
         model.eval()
         model.to(preprocessor.device)
@@ -93,8 +97,8 @@ class GraphNN(nn.Module):
                 if entity not in source_preprocessor.entity_id:
                     entity_type = self.preprocessor.graph.nodes[new_id].feature
 
-                    if entity_type in source_preprocessor.entities_by_type and source_preprocessor.entities_by_type[
-                        entity_type]:
+                    if (entity_type in source_preprocessor.entities_by_type and
+                            source_preprocessor.entities_by_type[entity_type]):
                         type_ids = source_preprocessor.entities_by_type[entity_type]
                         type_embeddings = source_model.entity_embedding.weight[type_ids]
                         avg_embedding = type_embeddings.mean(dim=0)
@@ -116,6 +120,10 @@ class GraphNN(nn.Module):
                     if base_relation in source_preprocessor.relation_id:
                         base_id = source_preprocessor.relation_id[base_relation]
                         base_embedding = source_model.relation_embedding.weight[base_id]
+
+                        if ':reversed' in relation:
+                            base_embedding = -base_embedding
+
                         noise = torch.randn_like(base_embedding) * 0.01
                         self.relation_embedding.weight[new_id] = F.normalize(base_embedding + noise, p=2, dim=0)
                     else:

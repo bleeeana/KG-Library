@@ -33,9 +33,9 @@ class GNNTest(unittest.TestCase):
         model = GraphNN(preprocessor)
         train_loader, test_loader, val_loader = create_dataloader(preprocessor, batch_size=64)
 
-        print(f"entity id: {preprocessor.entity_id}")
-        print(f"relation id: {preprocessor.relation_id}")
-        print(f"hetero data: {preprocessor.hetero_graph.to_dict()}")
+        #print(f"entity id: {preprocessor.entity_id}")
+        #print(f"relation id: {preprocessor.relation_id}")
+        #print(f"hetero data: {preprocessor.hetero_graph.to_dict()}")
 
         trainer = GraphTrainer(model, train_loader, val_loader, epochs=15, lr=0.0005)
 

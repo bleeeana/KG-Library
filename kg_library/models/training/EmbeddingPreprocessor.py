@@ -18,6 +18,7 @@ class EmbeddingPreprocessor:
         self.split_triplets: Optional[list[np.ndarray]] = None
         self.labels: Optional[list[np.ndarray]] = None
         self.entities_by_type: dict[str, list[int]] = {}
+        self.node_type_dict : dict[int, int] = {}
 
         self._verify_device()
 
@@ -40,12 +41,18 @@ class EmbeddingPreprocessor:
                 self.feature_names.append(feature_name.lower())
         print(f"Updated features: {self.feature_names}")
 
+    def _create_node_type_dict(self):
+        for node in self.graph.nodes:
+            self.node_type_dict[self.entity_id[node.name]] = self.feature_names.index(node.feature.lower())
+
+
     def build_feature_matrix(self, feature_names : list[str]) -> None:
         self.entity_id = {entity.name: i for i, entity in enumerate(self.graph.nodes)}
         self.relation_id = {relation.get_relation(): i for i, relation in enumerate(self.graph.edges)}
         self.feature_names = sorted({node.feature.lower() for node in self.graph.nodes})
         print(f"Detected features: {self.feature_names}")
         self.expand_feature_names(feature_names)
+        self._create_node_type_dict()
         feature_index = {name: i for i, name in enumerate(self.feature_names)}
         features = np.zeros((len(self.graph.nodes), len(self.feature_names)), dtype=np.float32)
 
@@ -58,6 +65,7 @@ class EmbeddingPreprocessor:
     def build_hetero_graph(self) -> None:
         self.hetero_graph = HeteroData()
         self.hetero_graph["entity"].x = self.feature_matrix
+        self.hetero_graph["node_type_dict"] = self.node_type_dict
         edge_index_dict = {}
         edge_type_dict = {}
         for head, relation, tail in self.graph.triplets:
@@ -191,9 +199,14 @@ class EmbeddingPreprocessor:
         tail = batch.tail
         unique_ids = self.get_unique_ids(head, tail)
         #print(f"Unique ids: {unique_ids}")
+        #print(f"Node type dict: {self.node_type_dict}")
+        batch_node_type_dict = {}
+        for index in unique_ids:
+            batch_node_type_dict[index.item()] = self.node_type_dict[index.item()]
         feature_matrix = self.feature_matrix[unique_ids]
         hetero_data = HeteroData()
         hetero_data["entity"].x = feature_matrix
+        hetero_data["node_type_dict"] = batch_node_type_dict
         edge_index_dict = {}
         edge_type_dict = {}
         for i in range(len(head)):
