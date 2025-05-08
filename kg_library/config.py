@@ -7,6 +7,7 @@ NEO4J_AUTH = os.getenv("NEO4J_AUTH").split('/')
 EMAIL = os.getenv("EMAIL")
 EMBEDDING_DIM = 64
 HIDDEN_DIM = 64
+BATCHSIZE = 128
 __version__ = "0.1.0"
 def get_config():
     return {
@@ -14,5 +15,6 @@ def get_config():
         "neo4j_auth": NEO4J_AUTH,
         "embedding_dim": EMBEDDING_DIM,
         "hidden_dim": HIDDEN_DIM,
-        "email": EMAIL
+        "email": EMAIL,
+        "batch_size": BATCHSIZE
     }

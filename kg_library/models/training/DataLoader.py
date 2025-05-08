@@ -37,13 +37,33 @@ def create_single_batch_dataloader(preprocessor: EmbeddingPreprocessor) -> tuple
     return train_loader, val_loader, test_loader
 
 
-def create_dataloader(preprocessor : EmbeddingPreprocessor, batch_size=64) -> tuple[DataLoader, DataLoader, DataLoader]:
+def create_dataloader(preprocessor : EmbeddingPreprocessor, batch_size=64, num_workers=4) -> tuple[DataLoader, DataLoader, DataLoader]:
     train_data = TripletsDataset(preprocessor.split_triplets[0], preprocessor.labels[0], preprocessor.relation_id)
     val_data = TripletsDataset(preprocessor.split_triplets[1], preprocessor.labels[1], preprocessor.relation_id)
     test_data = TripletsDataset(preprocessor.split_triplets[2], preprocessor.labels[2], preprocessor.relation_id)
 
-    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_data, batch_size=batch_size)
-    test_loader = DataLoader(test_data, batch_size=batch_size)
+    train_loader = DataLoader(
+        train_data,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=True
+    )
+
+    val_loader = DataLoader(
+        val_data,
+        batch_size=batch_size * 2,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=True,
+    )
+
+    test_loader = DataLoader(
+        test_data,
+        batch_size=batch_size * 2,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=True,
+    )
 
     return train_loader, val_loader, test_loader

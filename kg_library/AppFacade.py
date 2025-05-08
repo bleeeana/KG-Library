@@ -1,4 +1,6 @@
 from typing import Optional
+
+from kg_library import get_config
 from kg_library.common import GraphData, WikidataExtractor, data_frame, GraphJSON
 from kg_library.models import TripletExtractor, GraphTrainer, GraphNN, EmbeddingPreprocessor, create_dataloader
 from kg_library.models.evaluation.TripletEvaluator import TripletEvaluator
@@ -154,6 +156,10 @@ class AppFacade:
         else:
             return set()
 
+    def expand_graph(self, to_size=1000):
+        for i in range(self.size, to_size):
+            pass
+
     def generate_graph_for_learning(self, load_model_from_file=False, load_triplets_from_file=False, load_graph=False,
                                     graph_path="base_graph.json", finetune=True, dataset_size=200):
         self.size = dataset_size
@@ -164,7 +170,7 @@ class AppFacade:
                 self.graph = GraphJSON.load(graph_path)
             else:
                 self.input_base_data()
-                GraphJSON.save(self.graph, "../data/input/base_graph.json")
+                GraphJSON.save(self.graph, "base_graph.json")
             self.learning_process()
         # self.find_internal_links()
         extra_triplets = set()
@@ -184,7 +190,7 @@ class AppFacade:
         self.preprocessor.preprocess(feature_names=self.knowledge_graph_extractor.type_map.values())
 
         self.model = GraphNN(self.preprocessor)
-        train_loader, test_loader, val_loader = create_dataloader(self.preprocessor, batch_size=64)
+        train_loader, test_loader, val_loader = create_dataloader(self.preprocessor, batch_size=get_config()["batch_size"])
         self.graph_trainer = GraphTrainer(self.model, train_loader, val_loader, epochs=25, lr=0.0005)
         self.graph_trainer.train()
         val_auc = self.graph_trainer.evaluate(self.graph_trainer.val_loader)
@@ -367,7 +373,7 @@ class AppFacade:
         print(updated_preprocessor.entity_id)
         print(updated_preprocessor.relation_id)
         updated_train_loader, updated_test_loader, updated_val_loader = create_dataloader(updated_preprocessor,
-                                                                                          batch_size=64)
+                                                                                          batch_size=get_config()["batch_size"])
         new_model = GraphNN(
             preprocessor=updated_preprocessor,
             hidden_dim=self.model.get_config()["hidden_dim"],

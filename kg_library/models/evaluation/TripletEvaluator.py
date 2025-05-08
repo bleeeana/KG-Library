@@ -75,12 +75,9 @@ class TripletEvaluator:
         return score_value
 
     def get_entity_embedding(self, embeddings, entity_id, entity_type):
-        """Получает эмбеддинг сущности либо по её ID, либо генерирует новый по типу"""
         if entity_id is not None:
-            # Берем эмбеддинг напрямую из уже обработанных
             return embeddings[entity_id].unsqueeze(0)
         else:
-            # Для новой сущности генерируем эмбеддинг на основе типа
             return self.get_new_entity_embedding(entity_type=entity_type)
 
     @torch.no_grad()

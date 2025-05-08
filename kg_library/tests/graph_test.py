@@ -46,8 +46,8 @@ class TestGraphData(unittest.TestCase):
         graph.add_new_triplet("Node 1", "Relation", "Node 2")
         graph.add_new_triplet("Node 2", "Relation2", "Node 3")
         graph.add_new_triplet("Node 3", "Relation3", "Node 1")
-        GraphJSON.save(graph, "minitest.json")
-        loaded_graph = GraphJSON.load("minitest.json")
+        GraphJSON.save(graph, "minitest1.json")
+        loaded_graph = GraphJSON.load("minitest1.json")
         self.assertEqual(len(graph.nodes), len(loaded_graph.nodes))
         self.assertEqual([node.name for node in graph.nodes], [node.name for node in loaded_graph.nodes])
         self.assertEqual([node.feature for node in graph.nodes],
@@ -59,9 +59,10 @@ class TestGraphData(unittest.TestCase):
 
     def test_save_to_json(self):
         app_facade = AppFacade()
-        app_facade.generate_graph_for_learning()
-        GraphJSON.save(app_facade.graph, "base_graph.json")
-        loaded_graph = GraphJSON.load("base_graph.json")
+        app_facade.size = 500
+        app_facade.input_base_data()
+        GraphJSON.save(app_facade.graph, "base_graph500.json")
+        loaded_graph = GraphJSON.load("base_graph500.json")
         self.assertEqual(len(app_facade.graph.nodes), len(loaded_graph.nodes))
         self.assertEqual([node.name for node in app_facade.graph.nodes], [node.name for node in loaded_graph.nodes])
         self.assertEqual([node.feature for node in app_facade.graph.nodes], [node.feature for node in loaded_graph.nodes])

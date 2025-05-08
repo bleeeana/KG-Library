@@ -27,7 +27,7 @@ class GNNTest(unittest.TestCase):
         self.assertGreater(val_auc[0], 0.7, "Model AUC is too low, might not be learning")
 
     def test_load_graph_train(self):
-        graph = GraphJSON.load("base_graph.json")
+        graph = GraphJSON.load("base_graph_mini.json")
         preprocessor = EmbeddingPreprocessor(graph)
         preprocessor.preprocess([])
         model = GraphNN(preprocessor)

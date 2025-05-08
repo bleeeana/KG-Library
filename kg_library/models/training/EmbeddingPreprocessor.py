@@ -194,32 +194,50 @@ class EmbeddingPreprocessor:
         unique_ids = torch.cat([head_id, tail_id]).unique()
         return unique_ids
 
-    def create_hetero_from_batch(self, batch : Batch.to_data_list) -> HeteroData:
-        head = batch.head
-        tail = batch.tail
-        unique_ids = self.get_unique_ids(head, tail)
-        #print(f"Unique ids: {unique_ids}")
-        #print(f"Node type dict: {self.node_type_dict}")
-        batch_node_type_dict = {}
-        for index in unique_ids:
-            batch_node_type_dict[index.item()] = self.node_type_dict[index.item()]
-        feature_matrix = self.feature_matrix[unique_ids]
+    def create_hetero_from_batch(self, batch: Batch.to_data_list) -> HeteroData:
+        # Переносим все входные данные на GPU (если ещё не там)
+        head = batch.head.to(self.device)
+        tail = batch.tail.to(self.device)
+        edge_attr = batch.edge_attr.to(self.device)
+
+        # Получаем уникальные узлы и их типы
+        unique_ids = torch.unique(torch.cat([head, tail])).to(self.device)
+        batch_node_type_dict = {
+            index.item(): self.node_type_dict[index.item()]
+            for index in unique_ids
+        }
+
+        feature_matrix = self.feature_matrix.to(self.device)[unique_ids]
+
         hetero_data = HeteroData()
         hetero_data["entity"].x = feature_matrix
         hetero_data["node_type_dict"] = batch_node_type_dict
-        edge_index_dict = {}
+
+        reverse_relation_id = {v: k for k, v in self.relation_id.items()}
         edge_type_dict = {}
+
+        edge_indices = {}
+
         for i in range(len(head)):
             h_id = head[i]
             t_id = tail[i]
-            relation_name = next(key for key, value in self.relation_id.items() if value == batch.edge_attr[i])
-            if ('entity', relation_name, 'entity') not in edge_index_dict:
-                edge_index_dict[('entity', relation_name, 'entity')] = [[], []]
-            edge_index_dict[('entity', relation_name, 'entity')][0].append(h_id)
-            edge_index_dict[('entity', relation_name, 'entity')][1].append(t_id)
-            edge_type_dict[relation_name] = batch.edge_attr[i].item()
-        for relation_tuple, (src, dest) in edge_index_dict.items():
-            hetero_data[relation_tuple].edge_index = torch.tensor([src, dest], dtype=torch.long).to(self.device)
+            rel_id = edge_attr[i].item()
+            relation_name = reverse_relation_id[rel_id]
+
+            edge_type_dict[relation_name] = rel_id
+            relation_tuple = ('entity', relation_name, 'entity')
+
+            if relation_tuple not in edge_indices:
+                edge_indices[relation_tuple] = [[], []]
+            edge_indices[relation_tuple][0].append(h_id)
+            edge_indices[relation_tuple][1].append(t_id)
+
+        for relation_tuple, (src, dest) in edge_indices.items():
+            hetero_data[relation_tuple].edge_index = torch.stack([
+                torch.tensor(src, device=self.device),
+                torch.tensor(dest, device=self.device)
+            ], dim=0)
+
         hetero_data.edge_type_dict = edge_type_dict
         return hetero_data
 
