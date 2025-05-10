@@ -1,5 +1,4 @@
 from typing import Optional
-
 from kg_library import get_config
 from kg_library.common import GraphData, WikidataExtractor, data_frame, GraphJSON
 from kg_library.models import TripletExtractor, GraphTrainer, GraphNN, EmbeddingPreprocessor, create_dataloader
@@ -7,6 +6,7 @@ from kg_library.models.evaluation.TripletEvaluator import TripletEvaluator
 from kg_library.utils import AudioProcessor, PathManager
 import torch
 import os
+from tqdm import tqdm
 
 
 class AppFacade:
@@ -160,11 +160,11 @@ class AppFacade:
         for i in range(self.size, to_size):
             pass
 
-    def generate_graph_for_learning(self, load_model_from_file=False, load_triplets_from_file=False, load_graph=False,
+    def generate_graph_for_learning(self, load_model_from_file=False, model_path="model_with_config.pt",  load_triplets_from_file=False, load_graph=False,
                                     graph_path="base_graph.json", finetune=True, dataset_size=200):
         self.size = dataset_size
         if load_model_from_file:
-            self.load_model_for_finetune()
+            self.load_model_for_finetune(model_path=model_path, graph_path=graph_path)
         else:
             if load_graph:
                 self.graph = GraphJSON.load(graph_path)
@@ -339,9 +339,18 @@ class AppFacade:
                 print(f"Не удалось загрузить граф из {graph_path}")
         self.model = GraphNN.load_model(model_path, map_location=map_location, preprocessor=self.preprocessor)
 
-    def load_model_for_finetune(self, model_path="model_with_config.pt", map_location='cuda'):
+    def load_model_for_finetune(self, model_path="model_with_config.pt", map_location='cuda', graph_path=None):
+        models_path = PathManager.get_model_path(model_path)
+        input_path = PathManager.get_input_path(model_path)
+        if os.path.exists(models_path):
+            model_path = models_path
+        elif os.path.exists(input_path):
+            model_path = input_path
         checkpoint = torch.load(model_path, map_location=map_location, weights_only=False)
-        self.graph = GraphJSON.load(checkpoint["graph"])
+        if graph_path is None:
+            self.graph = GraphJSON.load(checkpoint["graph"])
+        else:
+            self.graph = GraphJSON.load(graph_path)
         self.preprocessor = EmbeddingPreprocessor(self.graph)
         self.preprocessor.load_config(checkpoint["preprocessor_config"])
         print(self.preprocessor.entity_id)
@@ -367,11 +376,12 @@ class AppFacade:
 
     def finetuning(self, updated_graph):
         updated_graph.add_loop_reversed_triplet()
+        GraphJSON.save(updated_graph, "graph_finetune.json")
         updated_preprocessor = EmbeddingPreprocessor(updated_graph)
-        print(self.preprocessor.feature_names)
+        #print(self.preprocessor.feature_names)
         updated_preprocessor.preprocess(self.knowledge_graph_extractor.type_map.values())
-        print(updated_preprocessor.entity_id)
-        print(updated_preprocessor.relation_id)
+        #print(updated_preprocessor.entity_id)
+        #print(updated_preprocessor.relation_id)
         updated_train_loader, updated_test_loader, updated_val_loader = create_dataloader(updated_preprocessor,
                                                                                           batch_size=get_config()["batch_size"])
         new_model = GraphNN(
@@ -397,9 +407,9 @@ class AppFacade:
         updated_graph = self.graph.clone()
         evaluator = TripletEvaluator(self.model)
         added_triplets = 0
-        for head, relation, tail, head_feature, tail_feature in new_triplets:
+        for head, relation, tail, head_feature, tail_feature in tqdm(new_triplets, desc="Filtering"):
             if updated_graph.has_triplet(head, relation, tail):
-                # print(f"Already has triplet {head}({head_feature}) - [{relation}] -> {tail}({tail_feature})")
+                #print(f"Already has triplet {head}({head_feature}) - [{relation}] -> {tail}({tail_feature})")
                 continue
             head_id = self.preprocessor.entity_id.get(head, None)
             tail_id = self.preprocessor.entity_id.get(tail, None)
@@ -419,7 +429,7 @@ class AppFacade:
             probability = torch.sigmoid(torch.tensor(score)).item()
 
             if probability > confidence_threshold:
-                # print(f"Adding new triplet {head}({head_feature}) - [{relation}] -> {tail}({tail_feature}) (score: {probability:.4f})")
+                #print(f"Adding new triplet {head}({head_feature}) - [{relation}] -> {tail}({tail_feature}) (score: {probability:.4f})")
                 updated_graph.add_new_triplet(
                     head=head,
                     relation=relation,
@@ -429,6 +439,6 @@ class AppFacade:
                     tail_feature=tail_feature
                 )
                 added_triplets += 1
-            # else:
-            # print(f"Discarding new triplet {head}({head_feature}) - [{relation}] -> {tail}({tail_feature}) (score: {probability:.4f})")
+            #else:
+                #print(f"Discarding new triplet {head}({head_feature}) - [{relation}] -> {tail}({tail_feature}) (score: {probability:.4f})")
         return added_triplets, updated_graph

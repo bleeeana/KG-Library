@@ -5,6 +5,7 @@ from kg_library.common import GraphData
 from torch_geometric.data import HeteroData, Batch
 from sklearn.model_selection import train_test_split
 import numpy as np
+from tqdm import tqdm
 
 class EmbeddingPreprocessor:
     def __init__(self, graph: GraphData):
@@ -109,7 +110,7 @@ class EmbeddingPreprocessor:
                 self.entities_by_type[entity_type] = []
             self.entities_by_type[entity_type].append(entity)
 
-        for index, (head, relation, tail) in enumerate(positive_triplets):
+        for index, (head, relation, tail) in enumerate(tqdm(positive_triplets, desc="Generating negative triplets")):
             head_type = self.graph.nodes[head].feature
             tail_type = self.graph.nodes[tail].feature
 
@@ -145,6 +146,7 @@ class EmbeddingPreprocessor:
                                       and self.graph.nodes[e].feature != tail_type]
                 if possible_tails:
                     negative_triplets.append((head, relation, np.random.choice(possible_tails)))
+
         return negative_triplets
 
     def __split_data(
@@ -244,6 +246,7 @@ class EmbeddingPreprocessor:
     def preprocess(self, feature_names, test_size: float = 0.001, val_size: float = 0.199, random_state: int = 1) -> None:
         self.build_feature_matrix(feature_names)
         self.build_hetero_graph()
+        print("generating training data")
         self.prepare_training_data(test_size, val_size, random_state)
 
     def get_or_create_relation_id(self, relation: str) -> int:

@@ -76,12 +76,12 @@ class KnowledgeGraphGeneratorWrapper:
                                                         confidence_threshold, find_internal_links=link_prediction,
                                                         finetune=finetune, model_path=model_path)
 
-    def learn_model(self, load_model_from_file=False, load_triplets_from_file=False, load_graph=False,
+    def learn_model(self, load_model_from_file=False, model_path="model.pt", load_triplets_from_file=False, load_graph=False,
                     graph_path="base_graph.json", finetune=False, dataset_size=200):
         self.app_facade.generate_graph_for_learning(load_graph=load_graph, graph_path=graph_path,
                                                     load_model_from_file=load_model_from_file,
                                                     load_triplets_from_file=load_triplets_from_file, finetune=finetune,
-                                                    dataset_size=dataset_size)
+                                                    dataset_size=dataset_size, model_path=model_path)
 
     @staticmethod
     def save_graph_to_db(graph: GraphData):
@@ -117,16 +117,16 @@ def main():
     args = parser.parse_args()
 
     if args.learn:
-        print(f"Starting model training from scratch... {args.size_dataset} triplets will be used")
+        print(f"Starting model training from scratch... {args.size_dataset} works will be used")
         processor = KnowledgeGraphGeneratorWrapper()
 
-        load_model = False
+        load_model = False if args.model is None else True
         load_triplets = args.load_triplets
         load_graph = args.graph_path is not None
         graph_path = "base_graph.json" if args.graph_path is None else args.graph_path
 
         processor.learn_model(load_model_from_file=load_model, load_triplets_from_file=load_triplets,
-                              load_graph=load_graph, graph_path=graph_path, finetune=args.finetune, dataset_size=args.size_dataset)
+                              load_graph=load_graph, graph_path=graph_path, finetune=args.finetune, dataset_size=args.size_dataset, model_path=args.model)
         if not args.no_save:
             print(f"Saving trained model to {args.output}...")
             processor.save_model(args.output)
