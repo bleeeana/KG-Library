@@ -5,3 +5,4 @@ from kg_library.models.training.DataLoader import create_dataloader, create_sing
 from kg_library.models.training.GraphNN import GraphNN
 from kg_library.models.training.GraphTrainer import GraphTrainer
 from kg_library.models.training.CompGCNConv import CompGCNConv
+from kg_library.models.evaluation.TripletEvaluator import TripletEvaluator

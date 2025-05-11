@@ -1,8 +1,7 @@
 from typing import Optional
 from kg_library import get_config
 from kg_library.common import GraphData, WikidataExtractor, data_frame, GraphJSON
-from kg_library.models import TripletExtractor, GraphTrainer, GraphNN, EmbeddingPreprocessor, create_dataloader
-from kg_library.models.evaluation.TripletEvaluator import TripletEvaluator
+from kg_library.models import TripletExtractor, GraphTrainer, GraphNN, EmbeddingPreprocessor, create_dataloader, TripletEvaluator
 from kg_library.utils import AudioProcessor, PathManager
 import torch
 import os
@@ -200,7 +199,7 @@ class AppFacade:
 
     def generate_graph_from_audio(self, audio: str, confidence_threshold, link_prediction=False, finetune=False, model_path="model_finetune.pt"):
         text = self.audio_processor.transform_to_text(audio)
-        self.generate_graph_from_text(text, confidence_threshold, link_prediction, finetune, model_path)
+        return self.generate_graph_from_text(text, confidence_threshold, link_prediction, finetune, model_path)
 
     def generate_graph_from_text(self, text: str, confidence_threshold, find_internal_links=True,
                                  finetune=False, model_path="model_finetune.pt") -> GraphData:
@@ -260,11 +259,12 @@ class AppFacade:
                 print(f"Отклонен триплет: {head} - [{relation}] -> {tail} (уверенность: {probability:.4f})")
 
         if find_internal_links and filtered_triplets:
-            print("Поиск потенциальных внутренних связей между сущностями...")
+            print("Объединение нового графа с опорным...")
+            merged_graph = self.graph.merge_with_another_graph(temp_graph) if self.graph else temp_graph
+            merged_graph.add_loop_reversed_triplet()
 
-            temp_graph.add_loop_reversed_triplet()
-
-            temp_preprocessor = EmbeddingPreprocessor(temp_graph)
+            print("Поиск потенциальных внутренних связей между новыми сущностями...")
+            temp_preprocessor = EmbeddingPreprocessor(merged_graph)
             temp_preprocessor.preprocess(self.knowledge_graph_extractor.type_map.values())
 
             temp_model = GraphNN(
@@ -273,36 +273,33 @@ class AppFacade:
                 num_layers=self.model.get_config()["num_layers"],
                 dropout=self.model.get_config()["dropout"]
             )
-
             temp_model.transfer_weights(self.model, self.preprocessor)
-            self.find_internal_links(confidence_threshold, temp_graph, temp_model)
-            self.graph = temp_graph
-            print(f"Итоговый граф содержит {len(self.graph.triplets)} триплетов")
-            self.graph.print()
+
+            self.find_internal_links(confidence_threshold, merged_graph, temp_graph, temp_model,
+                                     target_nodes=temp_graph.get_node_names())
+
+            self.graph = merged_graph
+
         if finetune:
             self.finetuning(self.graph)
 
         return self.graph
 
+
     @staticmethod
-    def find_internal_links(confidence_threshold, graph, model):
+    def find_internal_links(confidence_threshold, graph, temp_graph, model, target_nodes=None):
         temp_evaluator = TripletEvaluator(model)
         potential_links = temp_evaluator.link_prediction_in_graph(
             threshold=confidence_threshold,
-            top_k=10
+            top_k=10,
+            target_node_names=target_nodes
         )
         for link in potential_links:
             head, relation, tail = link['head'], link['relation'], link['tail']
             probability = link['score']
-
-            if not graph.has_triplet_direct(head, relation, tail):
-                print(
-                    f"Найдена внутренняя связь: {head} - [{relation}] -> {tail} (уверенность: {probability:.4f})")
-                graph.add_new_triplet_direct(
-                    head=head,
-                    relation=relation,
-                    tail=tail,
-                )
+            if not temp_graph.has_triplet_direct(head, relation, tail):
+                print(f"found internal link: {head} - [{relation}] -> {tail} (score: {probability:.4f})")
+                temp_graph.add_new_triplet_direct(head=head, relation=relation, tail=tail)
 
     def save_model(self, model_path, graph_path="graph.json"):
         if os.path.dirname(model_path) == "":
@@ -336,7 +333,7 @@ class AppFacade:
                 self.preprocessor = EmbeddingPreprocessor(self.graph)
                 self.preprocessor.load_config(checkpoint["preprocessor_config"])
             except:
-                print(f"Не удалось загрузить граф из {graph_path}")
+                print(f"unable to load graph from {graph_path}")
         self.model = GraphNN.load_model(model_path, map_location=map_location, preprocessor=self.preprocessor)
 
     def load_model_for_finetune(self, model_path="model_with_config.pt", map_location='cuda', graph_path=None):

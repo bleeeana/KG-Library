@@ -7,6 +7,7 @@ from kg_library.models import EarlyStoppingController
 import torch.nn.functional as F
 import torch
 from kg_library.models import EmbeddingPreprocessor, GraphNN
+from kg_library.utils import PathManager
 
 class GraphTrainer:
     def __init__(self, model, train_loader, val_loader, epochs=100, lr=1e-3, patience=4):
@@ -157,6 +158,7 @@ class GraphTrainer:
         return val_auc, val_loss
 
     def save_with_config(self, model_path="model_with_config.pt", graph_path="base_graph.json"):
+        model_path = PathManager.get_model_path(model_path)
         torch.save({
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),

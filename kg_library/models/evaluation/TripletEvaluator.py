@@ -81,12 +81,19 @@ class TripletEvaluator:
             return self.get_new_entity_embedding(entity_type=entity_type)
 
     @torch.no_grad()
-    def link_prediction_in_graph(self, threshold=0.75, top_k=10, batch_size=128):
+    def link_prediction_in_graph(self, threshold=0.75, top_k=10, batch_size=128, target_nodes=None):
         self.model.eval()
         device = self.device_string
         graph = self.preprocessor.hetero_graph.to(device)
         entity_embeddings = self.model(graph)["entity"]
         num_entities = entity_embeddings.size(0)
+
+        if target_nodes is not None:
+            valid_node_ids = [
+                self.preprocessor.entity_id[name] for name in target_nodes if name in self.preprocessor.entity_id
+            ]
+        else:
+            valid_node_ids = list(range(num_entities))
 
         valid_relations = [
             (name, idx) for name, idx in self.preprocessor.relation_id.items()
@@ -95,10 +102,10 @@ class TripletEvaluator:
 
         possible_links = []
 
-        for head_idx in range(num_entities):
+        for head_idx in valid_node_ids:
             head_embedding = entity_embeddings[head_idx].unsqueeze(0)
             valid_tail_indices = torch.tensor(
-                [i for i in range(num_entities) if i != head_idx], device=device
+                [i for i in valid_node_ids if i != head_idx], device=device
             )
 
             for rel_name, rel_idx in valid_relations:

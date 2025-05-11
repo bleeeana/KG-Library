@@ -42,6 +42,12 @@ class GraphData:
         self.triplets.append((head, relation, tail))
         head.add_output(relation)
         tail.add_input(relation)
+        if head not in self.nodes:
+            self.nodes.append(head)
+        if tail not in self.nodes:
+            self.nodes.append(tail)
+        if relation not in self.edges:
+            self.edges.append(relation)
 
     def add_new_triplet(self, head : str, relation : str, tail : str, check_synonyms : bool = True, head_feature : str = "default", tail_feature : str = "default"):
         #print(f"Adding new triplet: {head}({head_feature}) -> {relation} -> {tail}({tail_feature}), check synonyms: {check_synonyms}")
@@ -95,6 +101,15 @@ class GraphData:
 
     def has_triplet(self, head : str, relation : str, tail : str) -> bool:
         return any((triplet[0].name, triplet[1].get_relation(), triplet[2].name) == (head, relation, tail) for triplet in self.triplets)
+
+    def merge_with_another_graph(self, other_graph):
+        merged = self.clone()
+        for triplet in other_graph.triplets:
+            merged.add_new_triplet_direct(triplet[0], triplet[1], triplet[2])
+        return merged
+
+    def get_node_names(self):
+        return [node.name for node in self.nodes]
 
     def clone(self):
         new_graph = GraphData()
