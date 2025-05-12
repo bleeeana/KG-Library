@@ -6,7 +6,8 @@ from kg_library.utils import AudioProcessor, PathManager
 import torch
 import os
 from tqdm import tqdm
-
+from torch.serialization import add_safe_globals
+import torch_geometric.data.storage
 
 class AppFacade:
     def __init__(self):
@@ -325,7 +326,8 @@ class AppFacade:
                 model_path = models_path
             elif os.path.exists(input_path):
                 model_path = input_path
-        checkpoint = torch.load(model_path, map_location=map_location)
+        add_safe_globals([torch_geometric.data.storage.BaseStorage])
+        checkpoint = torch.load(model_path, map_location=map_location, weights_only=False)
         if "graph" in checkpoint:
             graph_path = checkpoint["graph"]
             try:
@@ -343,6 +345,7 @@ class AppFacade:
             model_path = models_path
         elif os.path.exists(input_path):
             model_path = input_path
+        add_safe_globals([torch_geometric.data.storage.BaseStorage])
         checkpoint = torch.load(model_path, map_location=map_location, weights_only=False)
         if graph_path is None:
             self.graph = GraphJSON.load(checkpoint["graph"])

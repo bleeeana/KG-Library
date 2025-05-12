@@ -70,7 +70,6 @@ class GraphJSON:
 
     @staticmethod
     def load(filepath: str) -> GraphData:
-        
 
         original_path = filepath
 
@@ -85,11 +84,13 @@ class GraphJSON:
 
         if not os.path.exists(filepath):
             print(f"File {original_path} not found")
-            base_path = PathManager.get_input_path("base_graph.json")
+            base_path = PathManager.get_input_path("graph_finetune.json")
+            base_path2 = PathManager.get_output_path("graph_finetune.json")
+
             if os.path.exists(base_path):
                 filepath = base_path
-            else:
-                filepath = "base_graph.json"  
+            elif os.path.exists(base_path2):
+                filepath = base_path2
 
         with open(filepath, "r") as f:
             return GraphJSON.from_json(f.read())

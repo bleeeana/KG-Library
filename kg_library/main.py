@@ -2,7 +2,7 @@ from kg_library import AppFacade, Neo4jConnection
 import argparse, os, zipfile, tempfile
 from kg_library.common import GraphData
 
-from kg_library.utils import VideoProcessor
+from kg_library.utils import VideoProcessor, PathManager
 
 
 class KnowledgeGraphGeneratorWrapper:
@@ -45,10 +45,10 @@ class KnowledgeGraphGeneratorWrapper:
 
     def process_text_file(self, file_path: str, confidence_threshold: float = 0.65, find_internal_links=False,
                           finetune=False, model_path="model_finetune.pt"):
+        file_path = PathManager.get_input_path(file_path)
         if not os.path.exists(file_path):
             print(f"File {file_path} not found")
             return None
-
         with open(file_path, 'r', encoding='utf-8') as f:
             text = f.read()
 
@@ -57,6 +57,8 @@ class KnowledgeGraphGeneratorWrapper:
 
     def process_audio_file(self, file_path: str, confidence_threshold: float = 0.65, find_internal_links=False,
                            finetune=False, model_path="model_finetune.pt"):
+        file_path = PathManager.get_input_path(file_path)
+
         if not os.path.exists(file_path):
             print(f"File {file_path} not found")
             return None
@@ -67,6 +69,7 @@ class KnowledgeGraphGeneratorWrapper:
 
     def process_video_file(self, file_path: str, confidence_threshold: float = 0.65, link_prediction: bool = False,
                            finetune=False, model_path="model_finetune.pt"):
+        file_path = PathManager.get_input_path(file_path)
         if not os.path.exists(file_path):
             print(f"File {file_path} not found")
             return None
@@ -143,9 +146,9 @@ def main():
         print("Error: input file not specified (--input)")
         return
 
-    if not os.path.exists(args.input):
-        print(f"Error: file {args.input} not found")
-        return
+    # if not os.path.exists(args.input):
+    #     print(f"Error: file {args.input} not found")
+    #     return
 
     file_extension = os.path.splitext(args.input)[1].lower()
     processor = KnowledgeGraphGeneratorWrapper(args.model)

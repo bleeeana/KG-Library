@@ -94,7 +94,7 @@ class GraphData:
                 "MERGE (b:Entity {name: $obj}) "
                 "MERGE (a)-[r:RELATION {type: $rel}]->(b)"
             )
-            neo4j_connection.run_query(query, {"subj": subj, "rel": rel, "obj": obj})
+            neo4j_connection.run_query(query, {"subj": subj.name, "rel": rel.get_relation(), "obj": obj.name})
 
     def has_triplet_direct(self, head : NodeData, relation : EdgeData, tail : NodeData) -> bool:
         return (head, relation, tail) in self.triplets

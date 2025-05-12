@@ -8,7 +8,8 @@ import torch.nn.functional as F
 import torch
 from kg_library.models import EmbeddingPreprocessor, GraphNN
 from kg_library.utils import PathManager
-
+from torch.serialization import add_safe_globals
+import torch_geometric.data.storage
 class GraphTrainer:
     def __init__(self, model, train_loader, val_loader, epochs=100, lr=1e-3, patience=4):
         self.model = model
@@ -170,6 +171,7 @@ class GraphTrainer:
 
     @staticmethod
     def load_model_for_training(preprocessor : EmbeddingPreprocessor, model_path="model_with_config.pt", map_location='cuda', train_loader = None, val_loader = None):
+        add_safe_globals([torch_geometric.data.storage.BaseStorage])
         checkpoint = torch.load(model_path, map_location=map_location, weights_only=False)
         model = GraphNN(preprocessor, hidden_dim=checkpoint["model_config"]["hidden_dim"], num_layers=checkpoint["model_config"]["num_layers"], dropout=checkpoint["model_config"]["dropout"])
         model.load_state_dict(checkpoint["model_state_dict"])

@@ -5,7 +5,8 @@ from torch_geometric.data import HeteroData
 from kg_library import get_config
 from kg_library.models import EmbeddingPreprocessor
 from kg_library.models.training.CompGCNConv import CompGCNConv
-
+from torch.serialization import add_safe_globals
+import torch_geometric.data.storage
 
 class GraphNN(nn.Module):
     def __init__(self, preprocessor: EmbeddingPreprocessor, hidden_dim=get_config()["hidden_dim"],
@@ -74,7 +75,8 @@ class GraphNN(nn.Module):
 
     @staticmethod
     def load_model(model_path="model.pt", map_location='cuda', preprocessor: EmbeddingPreprocessor = None):
-        checkpoint = torch.load(model_path, map_location=map_location)
+        add_safe_globals([torch_geometric.data.storage.BaseStorage])
+        checkpoint = torch.load(model_path, map_location=map_location, weights_only=False)
         model = GraphNN(
             preprocessor,
             hidden_dim=checkpoint["model_config"]["hidden_dim"],
