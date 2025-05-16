@@ -1,10 +1,6 @@
 import whisper
 from whisper.audio import load_audio
-from kg_library import get_config
-import os
-
 from kg_library.utils import PathManager
-
 
 class AudioProcessor:
     def __init__(self):
@@ -17,9 +13,13 @@ class AudioProcessor:
 
 def main():
     audio_processor = AudioProcessor()
-    audio_file = os.path.join(get_config()["whisper_cache_path"], "test.mp3")
+    file = PathManager.get_input_path("example.txt")
+    with open(file, 'r', encoding='utf-8') as f:
+        text_file = f.read()
+    audio_file = PathManager.get_input_path("example.mp3")
     text = audio_processor.transform_to_text(audio_file)
     print(text)
+    print(text_file)
 
 if __name__ == "__main__":
     main()

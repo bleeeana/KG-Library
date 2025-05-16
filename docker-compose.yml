@@ -15,6 +15,7 @@ services:
       - ./data/models:/kg_library/data/models
       - ./cache/datasets:/kg_library/cache/datasets
       - ./cache/whisper:/kg_library/cache/whisper
+      - ./cache/mrebem:/kg_library/cache/mrebem
 
     deploy:
       resources:
@@ -34,8 +35,8 @@ services:
     volumes:
       - neo4j_data:/data
     ports:
-      - "7474:7474"  # HTTP-интерфейс Neo4j
-      - "7687:7687"  # Bolt-протокол
+      - "7474:7474"
+      - "7687:7687"
     healthcheck:
       test: [ "CMD", "wget", "-q", "--spider", "http://localhost:7474" ]
       interval: 10s

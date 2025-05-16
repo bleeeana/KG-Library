@@ -87,7 +87,7 @@ class GraphData:
         return next((e for e in self.edges if e.get_relation() == edge), None)
 
     def fill_database(self, neo4j_connection : Neo4jConnection):
-        print(self.triplets)
+        #print(self.triplets)
         for subj, rel, obj in self.triplets:
             query = (
                 "MERGE (a:Entity {name: $subj}) "

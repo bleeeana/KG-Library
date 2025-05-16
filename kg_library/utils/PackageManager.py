@@ -12,6 +12,7 @@ class PathManager:
     CACHE_DIR = os.path.join(BASE_DIR, "cache")
     DATASETS_CACHE_DIR = os.path.join(CACHE_DIR, "datasets")
     WHISPER_CACHE_DIR = os.path.join(CACHE_DIR, "whisper")
+    MREBEL_CACHE_DIR = os.path.join(CACHE_DIR, "mrebel")
 
     @staticmethod
     def ensure_dirs():
@@ -22,7 +23,8 @@ class PathManager:
             PathManager.MODELS_DIR,
             PathManager.CACHE_DIR,
             PathManager.DATASETS_CACHE_DIR,
-            PathManager.WHISPER_CACHE_DIR
+            PathManager.WHISPER_CACHE_DIR,
+            PathManager.MREBEL_CACHE_DIR
         ]
 
         for dir_path in directories:
@@ -47,3 +49,7 @@ class PathManager:
     @staticmethod
     def get_whisper_cache_path():
         return PathManager.WHISPER_CACHE_DIR
+
+    @staticmethod
+    def get_mrebel_cache_path():
+        return PathManager.MREBEL_CACHE_DIR

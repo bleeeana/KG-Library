@@ -23,16 +23,17 @@ RUN pip install poetry
 
 WORKDIR /kg_library
 COPY pyproject.toml poetry.lock ./
-RUN poetry config virtualenvs.create false && poetry install --only main --no-interaction --no-ansi --no-root && rm -rf ~/.cache/pip ~/.cache/poetry
+RUN poetry config virtualenvs.create false && poetry install --only main --no-interaction --no-ansi --no-root && \
+    rm -rf ~/.cache/pip ~/.cache/poetry
 
 RUN python -m spacy download en_core_web_lg && \
     python -m coreferee install en
 COPY . .
 
 RUN mkdir -p /kg_library/cache/datasets /kg_library/cache/whisper \
-    /kg_library/data/input /kg_library/data/output /kg_library/data/models
+    /kg_library/data/input /kg_library/data/output /kg_library/data/models /kg_library/cache/mrebem
 
-VOLUME ["/kg_library/data/input", "/kg_library/data/output", "/kg_library/data/models", "/kg_library/cache/datasets", "/kg_library/cache/whisper"]
+VOLUME ["/kg_library/data/input", "/kg_library/data/output", "/kg_library/data/models", "/kg_library/cache/datasets", "/kg_library/cache/whisper", "/kg_library/cache/mrebem"]
 
 RUN chmod +x /kg_library/entrypoint.sh
 

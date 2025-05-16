@@ -81,7 +81,7 @@ class TripletEvaluator:
             return self.get_new_entity_embedding(entity_type=entity_type)
 
     @torch.no_grad()
-    def link_prediction_in_graph(self, threshold=0.75, top_k=10, batch_size=128, target_nodes=None):
+    def link_prediction_in_graph(self, threshold=0.65, top_k=1, batch_size=128, target_nodes=None):
         self.model.eval()
         device = self.device_string
         graph = self.preprocessor.hetero_graph.to(device)

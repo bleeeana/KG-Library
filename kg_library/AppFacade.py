@@ -261,22 +261,21 @@ class AppFacade:
 
         if find_internal_links and filtered_triplets:
             print("Объединение нового графа с опорным...")
-            merged_graph = self.graph.merge_with_another_graph(temp_graph) if self.graph else temp_graph
-            merged_graph.add_loop_reversed_triplet()
+            #merged_graph = self.graph.merge_with_another_graph(temp_graph) if self.graph else temp_graph
+            #merged_graph.add_loop_reversed_triplet()
+            merged_graph = self.graph
+            #print("Поиск потенциальных внутренних связей между новыми сущностями...")
+            # temp_preprocessor = self.preprocessor
 
-            print("Поиск потенциальных внутренних связей между новыми сущностями...")
-            temp_preprocessor = EmbeddingPreprocessor(merged_graph)
-            temp_preprocessor.preprocess(self.knowledge_graph_extractor.type_map.values())
+            # temp_model = GraphNN(
+            #     preprocessor=temp_preprocessor,
+            #     hidden_dim=self.model.get_config()["hidden_dim"],
+            #     num_layers=self.model.get_config()["num_layers"],
+            #     dropout=self.model.get_config()["dropout"]
+            # )
+            # temp_model.transfer_weights(self.model, self.preprocessor)
 
-            temp_model = GraphNN(
-                preprocessor=temp_preprocessor,
-                hidden_dim=self.model.get_config()["hidden_dim"],
-                num_layers=self.model.get_config()["num_layers"],
-                dropout=self.model.get_config()["dropout"]
-            )
-            temp_model.transfer_weights(self.model, self.preprocessor)
-
-            self.find_internal_links(confidence_threshold, merged_graph, temp_graph, temp_model,
+            self.find_internal_links(confidence_threshold, temp_graph, self.model,
                                      target_nodes=temp_graph.get_node_names())
 
             self.graph = merged_graph
@@ -288,12 +287,12 @@ class AppFacade:
 
 
     @staticmethod
-    def find_internal_links(confidence_threshold, graph, temp_graph, model, target_nodes=None):
+    def find_internal_links(confidence_threshold, temp_graph, model, target_nodes=None):
         temp_evaluator = TripletEvaluator(model)
         potential_links = temp_evaluator.link_prediction_in_graph(
             threshold=confidence_threshold,
-            top_k=10,
-            target_node_names=target_nodes
+            top_k=1,
+            target_nodes=target_nodes
         )
         for link in potential_links:
             head, relation, tail = link['head'], link['relation'], link['tail']
