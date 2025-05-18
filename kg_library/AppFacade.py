@@ -261,21 +261,21 @@ class AppFacade:
 
         if find_internal_links and filtered_triplets:
             print("Объединение нового графа с опорным...")
-            #merged_graph = self.graph.merge_with_another_graph(temp_graph) if self.graph else temp_graph
-            #merged_graph.add_loop_reversed_triplet()
-            merged_graph = self.graph
-            #print("Поиск потенциальных внутренних связей между новыми сущностями...")
-            # temp_preprocessor = self.preprocessor
+            merged_graph = self.graph.merge_with_another_graph(temp_graph) if self.graph else temp_graph
+            merged_graph.add_loop_reversed_triplet()
+            print("Поиск потенциальных внутренних связей между новыми сущностями...")
+            temp_preprocessor = EmbeddingPreprocessor(merged_graph)
+            temp_preprocessor.preprocess(feature_names=self.knowledge_graph_extractor.type_map.values(), generate_negative_triplets=False)
 
-            # temp_model = GraphNN(
-            #     preprocessor=temp_preprocessor,
-            #     hidden_dim=self.model.get_config()["hidden_dim"],
-            #     num_layers=self.model.get_config()["num_layers"],
-            #     dropout=self.model.get_config()["dropout"]
-            # )
-            # temp_model.transfer_weights(self.model, self.preprocessor)
+            temp_model = GraphNN(
+                preprocessor=temp_preprocessor,
+                hidden_dim=self.model.get_config()["hidden_dim"],
+                num_layers=self.model.get_config()["num_layers"],
+                dropout=self.model.get_config()["dropout"]
+            )
+            temp_model.transfer_weights(self.model, self.preprocessor)
 
-            self.find_internal_links(confidence_threshold, temp_graph, self.model,
+            self.find_internal_links(0.98, temp_graph, temp_model,
                                      target_nodes=temp_graph.get_node_names())
 
             self.graph = merged_graph

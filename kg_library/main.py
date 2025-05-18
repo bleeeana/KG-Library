@@ -146,10 +146,6 @@ def main():
         print("Error: input file not specified (--input)")
         return
 
-    # if not os.path.exists(args.input):
-    #     print(f"Error: file {args.input} not found")
-    #     return
-
     file_extension = os.path.splitext(args.input)[1].lower()
     processor = KnowledgeGraphGeneratorWrapper(args.model)
 

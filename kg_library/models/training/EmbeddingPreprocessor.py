@@ -243,11 +243,13 @@ class EmbeddingPreprocessor:
         hetero_data.edge_type_dict = edge_type_dict
         return hetero_data
 
-    def preprocess(self, feature_names, test_size: float = 0.001, val_size: float = 0.199, random_state: int = 1) -> None:
+    def preprocess(self, feature_names, test_size: float = 0.001, val_size: float = 0.199, random_state: int = 1,
+                   generate_negative_triplets=True) -> None:
         self.build_feature_matrix(feature_names)
         self.build_hetero_graph()
         print("generating training data")
-        self.prepare_training_data(test_size, val_size, random_state)
+        if generate_negative_triplets:
+            self.prepare_training_data(test_size, val_size, random_state)
 
     def get_or_create_relation_id(self, relation: str) -> int:
         if relation not in self.relation_id:

@@ -23,13 +23,13 @@ class GraphTrainer:
         self.writer = SummaryWriter(log_dir=log_dir)
         self.early_stopper = EarlyStoppingController(
             monitor_scores={
-                "auc": {"mode": "max", "min_delta": 0.001},
-                "loss": {"mode": "min", "min_delta": 0.001}
+                "auc": {"mode": "max", "min_delta": 0.01},
+                "loss": {"mode": "min", "min_delta": 0.01}
             },
             patience=4
         )
         self.optimizer = AdamW(model.parameters(), lr=lr, weight_decay=1e-5)
-        self.scheduler = ReduceLROnPlateau(self.optimizer, mode='max', patience=patience, factor=0.5)
+        self.scheduler = ReduceLROnPlateau(self.optimizer, mode='max',threshold_mode='abs',threshold=0.01, patience=patience, factor=0.5)
 
         print(f"TensorBoard logs will be saved to: {log_dir}")
         print("To view results, run in terminal:")
