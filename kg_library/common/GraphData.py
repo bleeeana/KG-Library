@@ -1,5 +1,4 @@
 from kg_library.common import NodeData, EdgeData
-from kg_library.db import Neo4jConnection
 from typing import Optional
 
 class GraphData:
@@ -86,15 +85,7 @@ class GraphData:
     def find_edge(self, edge: str) -> Optional[EdgeData]:
         return next((e for e in self.edges if e.get_relation() == edge), None)
 
-    def fill_database(self, neo4j_connection : Neo4jConnection):
-        #print(self.triplets)
-        for subj, rel, obj in self.triplets:
-            query = (
-                "MERGE (a:Entity {name: $subj}) "
-                "MERGE (b:Entity {name: $obj}) "
-                "MERGE (a)-[r:RELATION {type: $rel}]->(b)"
-            )
-            neo4j_connection.run_query(query, {"subj": subj.name, "rel": rel.get_relation(), "obj": obj.name})
+
 
     def has_triplet_direct(self, head : NodeData, relation : EdgeData, tail : NodeData) -> bool:
         return (head, relation, tail) in self.triplets

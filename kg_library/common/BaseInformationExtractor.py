@@ -106,15 +106,12 @@ class WikidataExtractor:
 
         return author_info
 
-
     def build_query(self, title: str) -> str:
         return f"""
         SELECT DISTINCT ?property ?propertyLabel ?value ?valueLabel WHERE {{
-          # Находим произведение по точному названию
           ?work rdfs:label "{title}"@en;
                 wdt:P31/wdt:P279* ?type.
 
-          # Все возможные типы литературных произведений
           VALUES ?literaryType {{
             wd:Q7725634    # literary work
             wd:Q47461344   # written work
@@ -130,10 +127,9 @@ class WikidataExtractor:
           }}
           FILTER(?type = ?literaryType)
 
-          # Основные свойства
           {{ 
             ?work wdt:P50 ?value.  # автор
-            ?value wdt:P31 wd:Q5.  # должен быть человеком
+            ?value wdt:P31 wd:Q5.
             BIND(wd:P50 AS ?property) 
           }}
           UNION
@@ -267,77 +263,77 @@ class WikidataExtractor:
             print(f"OpenLibrary query failed: {e}")
             return []
 
-    def print(self, title : str) -> None:
+    def print_base_info(self, title : str) -> None:
         info = api.get_book_info(title)
 
-        print("\nРезультаты:")
-        print(f"Авторы: {', '.join(a['label'] for a in info['authors'])}")
-        print(f"Даты публикации: {', '.join(d['label'] for d in info['publication_dates'])}")
-        print(f"Страны: {', '.join(c['label'] for c in info['countries'])}")
-        print(f"Языки: {', '.join(l['label'] for l in info['languages'])}")
+        print("\nResult:")
+        print(f"Authors: {', '.join(a['label'] for a in info['authors'])}")
+        print(f"Publication dates: {', '.join(d['label'] for d in info['publication_dates'])}")
+        print(f"Countries: {', '.join(c['label'] for c in info['countries'])}")
+        print(f"Languages: {', '.join(l['label'] for l in info['languages'])}")
 
-        print("\nПерсонажи:")
+        print("\nCharacters:")
         for char in info["characters"]:
             print(f"- {char['label']} ({char['id']})")
 
-        print("\nМеста действия:")
+        print("\nLocations:")
         for loc in info["locations"]:
             print(f"- {loc['label']} ({loc['id']})")
-        print("\nИнформация об авторах:")
+        print("\nAuthor info:")
         for author in info["authors"]:
             print(f"\n{author['label']}:")
             details = author.get("details", {})
 
             if details["birth_date"]:
                 birth_date = details["birth_date"][0]["label"]
-                print(f"  Дата рождения: {birth_date}")
+                print(f"  birth date: {birth_date}")
 
             if details["birth_place"]:
                 birth_places = ", ".join(place["label"] for place in details["birth_place"])
-                print(f"  Место рождения: {birth_places}")
+                print(f"  birth date: {birth_places}")
 
             if details["death_date"]:
                 death_date = details["death_date"][0]["label"]
-                print(f"  Дата смерти: {death_date}")
+                print(f"  date of death: {death_date}")
 
             if details["death_place"]:
                 death_places = ", ".join(place["label"] for place in details["death_place"])
-                print(f"  Место смерти: {death_places}")
+                print(f"  place of death: {death_places}")
 
             if details["citizenship"]:
                 citizenships = ", ".join(country["label"] for country in details["citizenship"])
-                print(f"  Гражданство: {citizenships}")
+                print(f"  citizenship: {citizenships}")
 
             if details["occupation"]:
                 occupations = ", ".join(occ["label"] for occ in details["occupation"])
-                print(f"  Профессии: {occupations}")
+                print(f"  occupation: {occupations}")
 
             if details["gender"]:
                 gender = details["gender"][0]["label"]
-                print(f"  Пол: {gender}")
+                print(f"  gender: {gender}")
 
             if details["education"]:
                 education = ", ".join(edu["label"] for edu in details["education"])
-                print(f"  Образование: {education}")
+                print(f"  education: {education}")
 
             if details["spouse"]:
                 spouses = ", ".join(spouse["label"] for spouse in details["spouse"])
-                print(f"  Супруг(а): {spouses}")
+                print(f"  spouses: {spouses}")
 
             if details["awards"]:
-                awards = ", ".join(award["label"] for award in details["awards"][:5])  # Ограничиваем вывод наград
-                print(f"  Награды: {awards}")
+                awards = ", ".join(award["label"] for award in details["awards"][:5])
+                print(f"  awards: {awards}")
                 if len(details["awards"]) > 5:
-                    print(f"    ... и еще {len(details['awards']) - 5} наград")
+                    print(f"    ... and {len(details['awards']) - 5} more awards")
 
             if details["notable_works"]:
                 works = ", ".join(
-                    work["label"] for work in details["notable_works"][:5])  # Ограничиваем вывод работ
-                print(f"  Известные работы: {works}")
+                    work["label"] for work in details["notable_works"][:5])
+                print(f"  notable works: {works}")
                 if len(details["notable_works"]) > 5:
-                    print(f"    ... и еще {len(details['notable_works']) - 5} работ")
+                    print(f"    ... and {len(details['notable_works']) - 5} more works")
 
 
 if __name__ == "__main__":
     api = WikidataExtractor()
-    api.print("Anna Karenina")
+    api.print_base_info("Anna Karenina")

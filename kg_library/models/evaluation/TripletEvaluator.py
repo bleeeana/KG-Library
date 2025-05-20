@@ -3,7 +3,6 @@ from kg_library.models import GraphNN, EmbeddingPreprocessor
 import torch
 import torch.nn.functional as F
 
-
 class TripletEvaluator:
     def __init__(self, model: GraphNN):
         self.model: GraphNN = model

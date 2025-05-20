@@ -1,5 +1,3 @@
-from kg_library.common import NodeData
-
 class EdgeData:
     def __init__(self, relation : str):
         self._relation = relation

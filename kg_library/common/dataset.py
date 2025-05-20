@@ -14,17 +14,12 @@ def main():
     print("Первые 5 записей:")
     pd.set_option('display.max_columns', None)
     print(data_frame.head())
-    print("\nИнформация о датафрейме:")
+    print("\ndata frame info:")
     print(data_frame.info())
-    print("\nОсновные статистики:")
+    print("\ndata frame describe:")
     print(data_frame.describe())
-    print("\nУникальные жанры:")
+    print("\ngenres:")
     print(data_frame['Parsed Genres'].unique())
-    fantasy_books = data_frame[data_frame['Parsed Genres'] == 'Fantasy']
-    print("\nКоличество фэнтези-книг:", len(fantasy_books))
-    genre_counts = data_frame.groupby('Parsed Genres').size()
-    print("\nКоличество книг по жанрам:")
-    print(genre_counts)
 
 if __name__ == "__main__":
     main()

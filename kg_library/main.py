@@ -44,7 +44,7 @@ class KnowledgeGraphGeneratorWrapper:
             print(f"Model saved to {output_path}")
 
     def process_text_file(self, file_path: str, confidence_threshold: float = 0.65, find_internal_links=False,
-                          finetune=False, model_path="model_finetune.pt"):
+                          finetune=False, model_path="model_finetune.pt", load_neo4j=False):
         file_path = PathManager.get_input_path(file_path)
         if not os.path.exists(file_path):
             print(f"File {file_path} not found")
@@ -53,10 +53,10 @@ class KnowledgeGraphGeneratorWrapper:
             text = f.read()
 
         return self.app_facade.generate_graph_from_text(text, confidence_threshold, find_internal_links,
-                                                        finetune=finetune, model_path=model_path)
+                                                        finetune=finetune, model_path=model_path, load_neo4j=load_neo4j)
 
     def process_audio_file(self, file_path: str, confidence_threshold: float = 0.65, find_internal_links=False,
-                           finetune=False, model_path="model_finetune.pt"):
+                           finetune=False, model_path="model_finetune.pt", load_neo4j=False):
         file_path = PathManager.get_input_path(file_path)
 
         if not os.path.exists(file_path):
@@ -65,10 +65,10 @@ class KnowledgeGraphGeneratorWrapper:
 
         return self.app_facade.generate_graph_from_audio(file_path, confidence_threshold,
                                                          link_prediction=find_internal_links, finetune=finetune,
-                                                         model_path=model_path)
+                                                         model_path=model_path, load_neo4j=load_neo4j)
 
     def process_video_file(self, file_path: str, confidence_threshold: float = 0.65, link_prediction: bool = False,
-                           finetune=False, model_path="model_finetune.pt"):
+                           finetune=False, model_path="model_finetune.pt", load_neo4j=False):
         file_path = PathManager.get_input_path(file_path)
         if not os.path.exists(file_path):
             print(f"File {file_path} not found")
@@ -77,19 +77,17 @@ class KnowledgeGraphGeneratorWrapper:
         return self.app_facade.generate_graph_from_text(VideoProcessor.extract_text_from_audio(video_path=file_path,
                                                                                                audio_processor=self.app_facade.audio_processor),
                                                         confidence_threshold, find_internal_links=link_prediction,
-                                                        finetune=finetune, model_path=model_path)
+                                                        finetune=finetune, model_path=model_path, load_neo4j=load_neo4j)
 
     def learn_model(self, load_model_from_file=False, model_path="model.pt", load_triplets_from_file=False, load_graph=False,
-                    graph_path="base_graph.json", finetune=False, dataset_size=200):
-        self.app_facade.generate_graph_for_learning(load_graph=load_graph, graph_path=graph_path,
+                    graph_path="base_graph.json", finetune=False, load_neo4j=False, dataset_size=200):
+        self.app_facade.generate_graph_for_learning(load_graph=load_graph, graph_path=graph_path, load_neo4j=load_neo4j,
                                                     load_model_from_file=load_model_from_file,
                                                     load_triplets_from_file=load_triplets_from_file, finetune=finetune,
                                                     dataset_size=dataset_size, model_path=model_path)
 
-    @staticmethod
-    def save_graph_to_db(graph: GraphData):
-        connection = Neo4jConnection()
-        graph.fill_database(connection)
+    def save_graph_to_db(self, graph: GraphData):
+        self.app_facade.connection.fill_database(graph)
 
 
 def main():
@@ -117,6 +115,8 @@ def main():
     parser.add_argument("--size-dataset", type=int, default=200, help="Size of learning dataset")
     parser.add_argument("--no-neo4j", action="store_true",
                         help="Don't save graph to Neo4j")
+    parser.add_argument("--neo4j", action="store_true",
+                        help="load graph from Neo4j")
     args = parser.parse_args()
 
     if args.learn:
@@ -127,7 +127,7 @@ def main():
         load_triplets = args.load_triplets
         load_graph = args.graph_path is not None
         graph_path = "base_graph.json" if args.graph_path is None else args.graph_path
-
+        load_neo4j = args.neo4j
         processor.learn_model(load_model_from_file=load_model, load_triplets_from_file=load_triplets,
                               load_graph=load_graph, graph_path=graph_path, finetune=args.finetune, dataset_size=args.size_dataset, model_path=args.model)
         if not args.no_save:
@@ -153,17 +153,17 @@ def main():
         print(f"Processing text file: {args.input}")
         graph = processor.process_text_file(file_path=args.input, confidence_threshold=args.confidence,
                                             find_internal_links=args.link_prediction, finetune=args.finetune,
-                                            model_path=args.model)
+                                            model_path=args.model, load_neo4j=args.neo4j)
     elif file_extension in ['.mp3', '.wav', '.ogg', '.flac']:
         print(f"Processing audio file: {args.input}")
         graph = processor.process_audio_file(file_path=args.input, confidence_threshold=args.confidence,
                                              find_internal_links=args.link_prediction, finetune=args.finetune,
-                                             model_path=args.model)
+                                             model_path=args.model, load_neo4j=args.neo4j)
     elif file_extension in ['.mp4', '.avi', '.mov', '.mkv']:
         print(f"Processing video file: {args.input}")
         graph = processor.process_video_file(file_path=args.input, confidence_threshold=args.confidence,
                                              link_prediction=args.link_prediction, finetune=args.finetune,
-                                             model_path=args.model)
+                                             model_path=args.model, load_neo4j=args.neo4j)
     else:
         print(f"Unsupported file format: {file_extension}")
         return
