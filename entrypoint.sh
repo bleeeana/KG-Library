@@ -3,24 +3,24 @@ set -e
 
 DATASETS_CACHE_PATH=$(python -c "from kg_library.utils import PathManager; print(PathManager.get_datasets_cache_path())")
 WHISPER_CACHE_PATH=$(python -c "from kg_library.utils import PathManager; print(PathManager.get_whisper_cache_path())")
-MREBEL_CACHE_PATH=$(python -c "from kg_library.utils import PathManager; print(PathManager.get_mrebem_cache_path())")
+MREBEL_CACHE_PATH=$(python -c "from kg_library.utils import PathManager; print(PathManager.get_mrebel_cache_path())")
 
 echo "Using datasets cache path: $DATASETS_CACHE_PATH"
 echo "Using whisper cache path: $WHISPER_CACHE_PATH"
 
-if [ ! -f "$DATASETS_CACHE_PATH/kingkangkr___book_summary_dataset" ]; then
+if [ ! -d "$DATASETS_CACHE_PATH/kingkangkr___book_summary_dataset" ]; then
   echo "Downloading book summary dataset..."
   python -c "from datasets import load_dataset; from kg_library.utils import PathManager; load_dataset('kingkangkr/book_summary_dataset', cache_dir=PathManager.get_datasets_cache_path())"
 fi
 
-if [ ! -d "$WHISPER_CACHE_PATH/base.pt" ]; then
+if [ ! -f "$WHISPER_CACHE_PATH/base.pt" ]; then
   echo "Downloading whisper model..."
   python -c "import whisper; from kg_library.utils import PathManager; whisper.load_model('base', download_root=PathManager.get_whisper_cache_path())"
 fi
 
 if [ ! -d "$MREBEL_CACHE_PATH/models--Babelscape--mrebel-large" ]; then
   echo "Downloading mrebel model..."
-  python -c python -c "from transformers import AutoModelForSeq2SeqLM, AutoTokenizer; AutoTokenizer.from_pretrained('Babelscape/mrebel-large', ); AutoModelForSeq2SeqLM.from_pretrained('Babelscape/mrebel-large')"
+  python -c "from kg_library.utils import PathManager; from transformers import AutoModelForSeq2SeqLM, AutoTokenizer; AutoTokenizer.from_pretrained('Babelscape/mrebel-large', cache_dir=PathManager.get_mrebel_cache_path()); AutoModelForSeq2SeqLM.from_pretrained('Babelscape/mrebel-large', cache_dir=PathManager.get_mrebel_cache_path())"
 fi
 
 echo "=== GPU Information ==="

@@ -30,10 +30,16 @@ RUN python -m spacy download en_core_web_lg && \
     python -m coreferee install en
 COPY . .
 
-RUN mkdir -p /kg_library/cache/datasets /kg_library/cache/whisper \
-    /kg_library/data/input /kg_library/data/output /kg_library/data/models /kg_library/cache/mrebem
+RUN mkdir -p \
+    /kg_library/cache/datasets \
+    /kg_library/cache/whisper \
+    /kg_library/cache/mrebel \
+    /kg_library/data/input \
+    /kg_library/data/output \
+    /kg_library/data/models && \
+    chmod -R 777 /kg_library/cache /kg_library/data
 
-VOLUME ["/kg_library/data/input", "/kg_library/data/output", "/kg_library/data/models", "/kg_library/cache/datasets", "/kg_library/cache/whisper", "/kg_library/cache/mrebem"]
+VOLUME ["/kg_library/data/input", "/kg_library/data/output", "/kg_library/data/models", "/kg_library/cache/datasets", "/kg_library/cache/whisper", "/kg_library/cache/mrebel"]
 
 RUN chmod +x /kg_library/entrypoint.sh
 

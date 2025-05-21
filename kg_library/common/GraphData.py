@@ -37,15 +37,21 @@ class GraphData:
         # Заглушка
         return False
 
-    def add_new_triplet_direct(self, head : NodeData, relation : EdgeData, tail : NodeData):
+    def add_new_triplet_without_check(self, head : NodeData, relation : EdgeData, tail : NodeData):
         self.triplets.append((head, relation, tail))
         head.add_output(relation)
         tail.add_input(relation)
-        if head not in self.nodes:
+
+    def add_new_triplet_direct(self, head : NodeData, relation : EdgeData, tail : NodeData):
+        if not self.has_triplet(head.name, relation.get_relation(), tail.name):
+            self.triplets.append((head, relation, tail))
+        head.add_output(relation)
+        tail.add_input(relation)
+        if head.name not in [node.name for node in self.nodes]:
             self.nodes.append(head)
-        if tail not in self.nodes:
+        if tail.name not in [node.name for node in self.nodes]:
             self.nodes.append(tail)
-        if relation not in self.edges:
+        if relation.get_relation() not in [edge.get_relation() for edge in self.edges]:
             self.edges.append(relation)
 
     def add_new_triplet(self, head : str, relation : str, tail : str, check_synonyms : bool = True, head_feature : str = "default", tail_feature : str = "default"):
@@ -84,8 +90,6 @@ class GraphData:
 
     def find_edge(self, edge: str) -> Optional[EdgeData]:
         return next((e for e in self.edges if e.get_relation() == edge), None)
-
-
 
     def has_triplet_direct(self, head : NodeData, relation : EdgeData, tail : NodeData) -> bool:
         return (head, relation, tail) in self.triplets

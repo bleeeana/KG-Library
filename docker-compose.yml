@@ -15,7 +15,7 @@ services:
       - ./data/models:/kg_library/data/models
       - ./cache/datasets:/kg_library/cache/datasets
       - ./cache/whisper:/kg_library/cache/whisper
-      - ./cache/mrebem:/kg_library/cache/mrebem
+      - ./cache/mrebel:/kg_library/cache/mrebel
 
     deploy:
       resources:

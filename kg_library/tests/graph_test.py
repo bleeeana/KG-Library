@@ -70,6 +70,22 @@ class TestGraphData(unittest.TestCase):
         self.assertEqual([edge.get_relation() for edge in app_facade.graph.edges], [edge.get_relation() for edge in loaded_graph.edges])
         self.assertEqual(len(app_facade.graph.triplets), len(loaded_graph.triplets))
 
+    def test_merge(self):
+        graph1 = GraphData()
+        graph2 = GraphData()
+        graph1.add_new_triplet("Node 1", "Relation", "Node 2")
+        graph1.add_new_triplet("Node 2", "Relation2", "Node 3")
+        graph2.add_new_triplet("Node 3", "Relation2", "Node 4")
+        graph2.add_new_triplet("Node 1", "Relation", "Node 2")
+        graph3 = graph1.merge_with_another_graph(graph2)
+        graph3.print()
+        for node in graph3.nodes:
+            print(node)
+        for edge in graph3.edges:
+            print(edge)
+        self.assertEqual(len(graph3.nodes), 4)
+        self.assertEqual(len(graph3.edges), 2)
+        self.assertEqual(len(graph3.triplets), 3)
 
     def test_balanced_graph(self):
         graph = GraphJSON.load("base_graph.json")
